@@ -40,7 +40,6 @@ def render(map):
 
         ''' Render Object Layer '''
         terminal.layer(2)
-        #print('Render Objects on: ' + str(current_layer()))
         for o in map.objects:
             if (o.x, o.y) in visible_tiles:
                 o.draw()
