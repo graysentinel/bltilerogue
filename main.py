@@ -24,11 +24,13 @@ def player_input(p):
 
 def render(map):
 
+    # get player object
     p = None
     for obj in map.objects:
         if obj.name == 'player':
             p = obj
 
+    #calculate field of view for all rendering below
     if map.fov_recompute:
         map.fov_recompute = False
         visible_tiles = tdl.map.quickFOV(p.x, p.y, map.is_visible_tile,
