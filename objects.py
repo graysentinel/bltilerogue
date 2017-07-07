@@ -1,11 +1,12 @@
 from bearlibterminal import terminal
 
 class GameObject:
-    def __init__(self, name, x, y, icon):
+    def __init__(self, name, x, y, icon, blocks=False):
         self.name = name
         self.x = x
         self.y = y
         self.icon = icon
+        self.blocks = blocks
 
     def draw(self):
         terminal.put(self.x*2, self.y, self.icon)

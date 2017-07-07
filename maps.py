@@ -1,4 +1,5 @@
 from random import randint
+import objects
 
 '''
 tile_types = {0: 'blank', 50: 'rock', 51: 'light_floor',
@@ -88,6 +89,7 @@ class DungeonMap:
         self.max_room_size = 10
         self.min_room_size = 4
         self.max_rooms = 30
+        self.max_room_monsters = 3
 
         self.rooms = []
 
@@ -152,6 +154,7 @@ class DungeonMap:
                         #self.tiles[x][y] = 2
 
                 self.rooms.append(new_room)
+                self.place_objects(new_room)
                 num_rooms += 1
 
 
@@ -179,6 +182,12 @@ class DungeonMap:
         for t in terrain_types:
             if self.tiles[x][y] == t.terrain_id:
                 return t.blocks
+            else:
+                for obj in self.objects:
+                    if obj.blocks and obj.x == x and obj.y == y:
+                        return True
+
+        return False
 
     def sight_blocked_at(self, x, y):
         for t in terrain_types:
@@ -201,3 +210,23 @@ class DungeonMap:
             return False
         else:
             return True
+
+    def place_objects(self, room):
+
+        num_monsters = randint(0, self.max_room_monsters)
+        print(num_monsters)
+
+        for i in range(num_monsters):
+            x = randint(room.x, room.x2)
+            y = randint(room.y, room.y2)
+            print('(' + str(x) + ',' + str(y) + ')')
+
+            if not self.is_blocked_at(x, y):
+                if randint(0, 100) < 80:
+                    monster = objects.GameObject('orc', x, y, 0xE101,
+                                                 blocks=True)
+                else:
+                    monster = objects.GameObject('troll', x, y, 0xE100,
+                                                 blocks=True)
+
+                self.objects.append(monster)
