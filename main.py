@@ -4,9 +4,8 @@ import objects
 import maps
 
 class GameMaster:
-    def __init__(self, game_state, turn_counter=0):
+    def __init__(self, game_state):
         self.game_state = game_state
-        self.turn_counter = turn_counter
         self.players = []
         self.action_queue = []
         self.fps = 25
