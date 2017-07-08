@@ -1,5 +1,7 @@
 from random import randint
 import objects
+import idgen
+import game_ai
 
 '''
 tile_types = {0: 'blank', 50: 'rock', 51: 'light_floor',
@@ -157,6 +159,7 @@ class DungeonMap:
                 self.place_objects(new_room)
                 num_rooms += 1
 
+        self.assign_object_ids()
 
     def create_h_tunnel(self, x1, x2, y):
         #self.tiles[x1][y] = 3
@@ -214,19 +217,30 @@ class DungeonMap:
     def place_objects(self, room):
 
         num_monsters = randint(0, self.max_room_monsters)
-        print(num_monsters)
+        monster_counter = 0
 
         for i in range(num_monsters):
             x = randint(room.x, room.x2)
             y = randint(room.y, room.y2)
-            print('(' + str(x) + ',' + str(y) + ')')
 
             if not self.is_blocked_at(x, y):
                 if randint(0, 100) < 80:
-                    monster = objects.GameObject('orc', x, y, 0xE101,
-                                                 blocks=True)
+                    ai_component = game_ai.BasicMonster(20)
+                    monster = objects.GameObject('orc', x, y,
+                                                 0xE101, blocks=True,
+                                                 ai=ai_component)
                 else:
+                    ai_component = game_ai.BasicMonster(40)
                     monster = objects.GameObject('troll', x, y, 0xE100,
-                                                 blocks=True)
+                                                  blocks=True,
+                                                  ai=ai_component)
 
+                monster.current_map = self
                 self.objects.append(monster)
+
+    def assign_object_ids(self):
+        pool = idgen.generate_id_pool(len(self.objects))
+
+        for obj in self.objects:
+            if obj.name != 'player':
+                obj.object_id = pool.pop()
