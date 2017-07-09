@@ -225,14 +225,18 @@ class DungeonMap:
 
             if not self.is_blocked_at(x, y):
                 if randint(0, 100) < 80:
+                    monster_fighter = objects.Fighter(hp=10, defense=0, power=3)
                     ai_component = game_ai.BasicMonster(20)
                     monster = objects.GameObject('orc', x, y,
                                                  0xE101, blocks=True,
+                                                 fighter=monster_fighter,
                                                  ai=ai_component)
                 else:
+                    monster_fighter = objects.Fighter(hp=16, defense=1, power=4)
                     ai_component = game_ai.BasicMonster(40)
                     monster = objects.GameObject('troll', x, y, 0xE100,
                                                   blocks=True,
+                                                  fighter=monster_fighter,
                                                   ai=ai_component)
 
                 monster.current_map = self

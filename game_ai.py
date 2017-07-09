@@ -3,6 +3,40 @@ import random
 import time
 
 class BasicMonster:
+    def __init__(self, turn_timer, active_flag=False):
+        self.turn_timer = turn_timer
+        self.active = active_flag
+        self.turns = 0
+
+    def take_turn(self):
+        monster = self.owner
+
+        for obj in monster.current_map.objects:
+            if obj.name == 'player':
+                p = obj
+
+        if not self.active:
+            if monster.distance_to(p) < 10:
+                self.active = True
+        else:
+            if self.turns < self.turn_timer:
+                self.turns += 1
+            else:
+                if monster.distance_to(p) > 10:
+                    self.active = False
+                else:
+                    if monster.distance_to(p) >= 2:
+                        x, y = monster.move_towards(p.x, p.y)
+                        if not monster.current_map.is_blocked_at(x, y):
+                            monster.x, monster.y = x, y
+                    elif p.fighter.hp > 0:
+                        print("The " + monster.name + "'s attack bounces off!'")
+
+                    self.turns = 0
+
+
+
+class ConfusedMonster:
     def __init__(self, turn_timer):
         self.turn_timer = turn_timer
         self.turns = 0

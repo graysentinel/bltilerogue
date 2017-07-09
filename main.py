@@ -143,7 +143,8 @@ terminal.set("""U+E100: assets/basic-monsters.png, size=16x16,
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 
 # Initialize Game
-player = objects.GameObject('player', 1, 1, 0xE000)
+player_fighter = objects.Fighter(hp=30, defense=2, power=5)
+player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
 dungeon_map = maps.DungeonMap(75, 45)
 dungeon_map.make_map(player)
 dungeon_map.objects.append(player)
