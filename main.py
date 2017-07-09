@@ -39,16 +39,22 @@ def player_move_or_attack(p, direction):
     target = None
     x, y = p.move(direction)
     for obj in p.current_map.objects:
-        if obj.x == x and obj.y == y:
+        if obj.fighter and (obj.x == x and obj.y == y):
             target = obj
             break
 
     if target is not None:
-        print('The ' + target.name + ' chuckles evilly.')
+        p.fighter.attack(target)
     else:
         if not p.current_map.is_blocked_at(x, y):
             p.x, p.y = x, y
             p.current_map.fov_recompute = True
+
+
+def player_death(p, gm):
+    print('You died!')
+    gm.game_state = 'dead'
+    p.icon = 0xE150
 
 
 def render(map, gm):
@@ -107,7 +113,8 @@ def render(map, gm):
     for y in range(0, terminal.TK_HEIGHT-bottom_panel_height):
         terminal.put(right_panel_x, y, 0x2588)
 
-    terminal.puts(right_panel_x, right_panel_y, "GUI Here",
+    terminal.puts(right_panel_x, right_panel_y, "Player HP: " +
+                  str(p.fighter.hp) + "/" + str(p.fighter.max_hp),
                   right_panel_width, right_panel_height,
                   terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
 
@@ -130,20 +137,17 @@ def current_layer():
 
 # Initialize Window
 terminal.open()
-terminal.set("""U+E000: assets/rogue.png, size=16x16,
-             align=center""")
-terminal.set("""U+E050: assets/floors.png, size=16x16,
-             align=center""")
-terminal.set("""U+E060: assets/walls.png, size=16x16,
-             align=center""")
-terminal.set("""U+E070: assets/doors.png, size=16x16,
-             align=center""")
-terminal.set("""U+E100: assets/basic-monsters.png, size=16x16,
-             align=center""")
+terminal.set("""U+E000: assets/rogue.png, size=16x16, align=center""")
+terminal.set("""U+E050: assets/floors.png, size=16x16, align=center""")
+terminal.set("""U+E060: assets/walls.png, size=16x16, align=center""")
+terminal.set("""U+E070: assets/doors.png, size=16x16, align=center""")
+terminal.set("""U+E100: assets/basic-monsters.png, size=16x16, align=center""")
+terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 
 # Initialize Game
-player_fighter = objects.Fighter(hp=30, defense=2, power=5)
+player_fighter = objects.Fighter(hp=30, defense=2, power=5,
+                                 death_function=player_death)
 player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
 dungeon_map = maps.DungeonMap(75, 45)
 dungeon_map.make_map(player)

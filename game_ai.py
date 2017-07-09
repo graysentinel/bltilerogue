@@ -30,9 +30,17 @@ class BasicMonster:
                         if not monster.current_map.is_blocked_at(x, y):
                             monster.x, monster.y = x, y
                     elif p.fighter.hp > 0:
-                        print("The " + monster.name + "'s attack bounces off!'")
+                        monster.fighter.attack(p)
 
                     self.turns = 0
+
+    def monster_death(self, monster):
+        print(monster.name.capitalize() + ' dies!')
+        monster.icon = 0xE150
+        monster.blocks = False
+        monster.fighter = None
+        monster.ai = None
+        monster.name = 'Remains of ' + monster.name
 
 
 
