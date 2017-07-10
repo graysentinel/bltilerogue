@@ -155,8 +155,18 @@ terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
 player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
-dungeon_map = maps.DungeonMap(75, 45)
+dungeon_map = maps.DungeonMapBSP(75, 45)
 dungeon_map.make_map(player)
+
+'''
+for x in range(dungeon_map.width):
+    for y in range(dungeon_map.height):
+        if isinstance(dungeon_map.tiles[x][y], float):
+            print('Tile ({}, {}) is a float!'.format(str(x), str(y)))
+        elif isinstance(dungeon_map.tiles[x][y], int):
+            print('Tile ({}, {}) is an int!'.format(str(x), str(y)))
+'''
+
 dungeon_map.objects.append(player)
 
 player.current_map = dungeon_map

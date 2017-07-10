@@ -1,7 +1,8 @@
-from random import randint
+import random
 import objects
 import idgen
 import game_ai
+from tcod import libtcodpy as tcod
 
 '''
 tile_types = {0: 'blank', 50: 'rock', 51: 'light_floor',
@@ -119,11 +120,11 @@ class DungeonMap:
         num_rooms = 0
 
         for r in range(self.max_rooms):
-            w = randint(self.min_room_size, self.max_room_size)
-            h = randint(self.min_room_size, self.max_room_size)
+            w = random.randint(self.min_room_size, self.max_room_size)
+            h = random.randint(self.min_room_size, self.max_room_size)
 
-            x = randint(0, self.width - w - 1)
-            y = randint(0, self.height - h - 1)
+            x = random.randint(0, self.width - w - 1)
+            y = random.randint(0, self.height - h - 1)
 
             new_room = Room(x, y, w, h)
             failed = False
@@ -144,7 +145,7 @@ class DungeonMap:
                 else:
                     (prev_x, prev_y) = self.rooms[num_rooms-1].center()
 
-                    if randint(0, 1):
+                    if random.randint(0, 1):
                         self.create_h_tunnel(prev_x, new_x, prev_y)
                         self.create_v_tunnel(prev_y, new_y, new_x)
                     else:
@@ -216,15 +217,15 @@ class DungeonMap:
 
     def place_objects(self, room):
 
-        num_monsters = randint(0, self.max_room_monsters)
+        num_monsters = random.randint(0, self.max_room_monsters)
         monster_counter = 0
 
         for i in range(num_monsters):
-            x = randint(room.x, room.x2)
-            y = randint(room.y, room.y2)
+            x = random.randint(room.x, room.x2)
+            y = random.randint(room.y, room.y2)
 
             if not self.is_blocked_at(x, y):
-                if randint(0, 100) < 80:
+                if random.randint(0, 100) < 80:
                     ai_component = game_ai.BasicMonster(20)
                     monster_fighter = objects.Fighter(hp=10, defense=0, power=3,
                                       recharge=20,
@@ -252,3 +253,147 @@ class DungeonMap:
         for obj in self.objects:
             if obj.name != 'player':
                 obj.object_id = pool.pop()
+
+
+
+class DungeonMapBSP(DungeonMap):
+
+    def __init__(self, width, height, depth=10, min_size=5, full_rooms=False):
+        DungeonMap.__init__(self, width, height)
+        # self.width = width
+        # self.height = height
+        self.depth = depth
+        self.min_size = min_size
+        self.full_rooms = full_rooms
+
+        self.tiles = [[ 0 for y in range(self.height) ]
+                        for x in range(self.width * 2) ]
+
+        self.tiles_explored = [[ 0 for y in range(self.height) ]
+                                 for x in range(self.width * 2) ]
+
+        self.rooms = []
+        self.objects = []
+
+    def make_map(self, player):
+        bsp = tcod.bsp_new_with_size(0, 0, self.width, self.height)
+
+        tcod.bsp_split_recursive(bsp, 0, self.depth, self.min_size+1,
+                                 self.min_size+1, 1.5, 1.5)
+
+        tcod.bsp_traverse_inverted_level_order(bsp, self.traverse_node)
+
+        # Block for adding stairs later
+
+        player_room = random.choice(self.rooms)
+        self.rooms.remove(player_room)
+
+        player.x = player_room[0]
+        player.y = player_room[1]
+
+    def traverse_node(self, node, dat):
+        if tcod.bsp_is_leaf(node):
+            minx = node.x + 1
+            maxx = node.x + node.w - 1
+            miny = node.y + 1
+            maxy = node.y + node.h - 1
+
+            if maxx == self.width - 1:
+                maxx -= 1
+            if maxy == self.height - 1:
+                maxy -= 1
+
+            if self.full_rooms == False:
+                minx = tcod.random_get_int(None, minx, maxx - self.min_size+1)
+                miny = tcod.random_get_int(None, miny, maxy - self.min_size+1)
+                maxx = tcod.random_get_int(None, minx + self.min_size - 2, maxx)
+                maxy = tcod.random_get_int(None, miny + self.min_size - 2, maxy)
+
+            node.x = minx
+            node.y = miny
+            node.w = maxx-minx + 1
+            node.h = maxy-miny + 1
+
+            for x in range(minx, maxx + 1):
+                for y in range(miny, maxy + 1):
+                    self.tiles[x][y] = 1
+
+            self.rooms.append(((minx + maxx) // 2, (miny + maxy) // 2))
+
+        else:
+            left = tcod.bsp_left(node)
+            right = tcod.bsp_right(node)
+            node.x = min(left.x, right.x)
+            node.y = min(left.y, right.y)
+            node.w = max(left.x + left.w, right.x + right.w) - node.x
+            node.h = max(left.y + left.h, right.y + right.h) - node.y
+            if node.horizontal:
+                if (left.x + left.w - 1 < right.x or
+                    right.x + right.w - 1 < left.x):
+                    x1 = tcod.random_get_int(None, left.x, left.x + left.w - 1)
+                    x2 = tcod.random_get_int(None, right.x, right.x +
+                                             right.w - 1)
+                    y = tcod.random_get_int(None, left.y + left.h, right.y)
+                    self.vline_up(x1, y - 1)
+                    self.hline(x1, y, x2)
+                    self.vline_down(x2, y + 1)
+
+                else:
+                    minx = max(left.x, right.x)
+                    maxx = min(left.x + left.w - 1, right.x + right.w - 1)
+                    x = tcod.random_get_int(None, minx, maxx)
+                    self.vline_down(x, right.y)
+                    self.vline_up(x, right.y - 1)
+
+            else:
+                if ( left.y + left.h - 1 < right.y or
+                    right.y + right.h - 1 < left.y ):
+                    y1 = tcod.random_get_int(None, left.y, left.y + left.h - 1)
+                    y2 = tcod.random_get_int(None, right.y,
+                                             right.y + right.h - 1)
+                    x = tcod.random_get_int(None, left.x + left.w, right.x)
+                    self.hline_left(x - 1, y1)
+                    self.vline(x, y1, y2)
+                    self.hline_right(x + 1, y2)
+                else:
+                    miny = max(left.y, right.y)
+                    maxy = min(left.y + left.h - 1, right.y + right.h - 1)
+                    y = tcod.random_get_int(None, miny, maxy)
+                    self.hline_left(right.x - 1, y)
+                    self.hline_right(right.x, y)
+
+        return True
+
+    def vline(self, x, y1, y2):
+        if y1 > y2:
+            y1, y2 = y2, y1
+
+        for y in range(y1, y2+1):
+            self.tiles[x][y] = 1
+
+    def vline_up(self, x, y):
+        while y >= 0 and self.tiles[x][y] == 0:
+            self.tiles[x][y] = 1
+            y -= 1
+
+    def vline_down(self, x, y):
+        while y < self.height and self.tiles[x][y] == 0:
+            self.tiles[x][y] = 1
+            y += 1
+
+    def hline(self, x1, y, x2):
+        if x1 > x2:
+            x1, x2 = x2, x1
+
+        for x in range(x1, x2+1):
+            self.tiles[x][y] = 1
+
+    def hline_left(self, x, y):
+        while x >= 0 and self.tiles[x][y] == 0:
+            self.tiles[x][y] = 1
+            x -= 1
+
+    def hline_right(self, x, y):
+        while x < self.width and self.tiles[x][y] == 0:
+            self.tiles[x][y] = 1
+            x += 1
