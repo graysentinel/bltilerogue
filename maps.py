@@ -273,6 +273,7 @@ class DungeonMapBSP(DungeonMap):
                                  for x in range(self.width * 2) ]
 
         self.rooms = []
+        self.room_objects = []
         self.objects = []
 
     def make_map(self, player):
@@ -290,6 +291,9 @@ class DungeonMapBSP(DungeonMap):
 
         player.x = player_room[0]
         player.y = player_room[1]
+
+        for room in self.room_objects:
+            self.place_objects(room)
 
     def traverse_node(self, node, dat):
         if tcod.bsp_is_leaf(node):
@@ -319,6 +323,8 @@ class DungeonMapBSP(DungeonMap):
                     self.tiles[x][y] = 1
 
             self.rooms.append(((minx + maxx) // 2, (miny + maxy) // 2))
+            new_room = Room(node.x, node.y, node.w, node.h)
+            self.room_objects.append(new_room)
 
         else:
             left = tcod.bsp_left(node)

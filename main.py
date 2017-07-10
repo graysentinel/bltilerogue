@@ -12,9 +12,6 @@ class GameMaster:
 
 
 def player_input(p, gm):
-
-    if gm.game_state == 'playing':
-
         key = None
         while terminal.has_input():
             key = terminal.read()
@@ -22,16 +19,17 @@ def player_input(p, gm):
         if key in (terminal.TK_CLOSE, terminal.TK_ESCAPE):
             return 'exit'
 
-        if key == terminal.TK_LEFT:
-            player_move_or_attack(p, objects.west)
-        elif key == terminal.TK_RIGHT:
-            player_move_or_attack(p, objects.east)
-        elif key == terminal.TK_UP:
-            player_move_or_attack(p, objects.north)
-        elif key == terminal.TK_DOWN:
-            player_move_or_attack(p, objects.south)
-        else:
-            return 'no-turn'
+        if gm.game_state == 'playing':
+            if key == terminal.TK_LEFT:
+                player_move_or_attack(p, objects.west)
+            elif key == terminal.TK_RIGHT:
+                player_move_or_attack(p, objects.east)
+            elif key == terminal.TK_UP:
+                player_move_or_attack(p, objects.north)
+            elif key == terminal.TK_DOWN:
+                player_move_or_attack(p, objects.south)
+            else:
+                return 'no-turn'
 
 
 def player_move_or_attack(p, direction):
@@ -51,9 +49,9 @@ def player_move_or_attack(p, direction):
             p.current_map.fov_recompute = True
 
 
-def player_death(p, gm):
+def player_death(p):
     print('You died!')
-    gm.game_state = 'dead'
+    p.alive = False
     p.icon = 0xE150
 
 
@@ -174,11 +172,16 @@ player.action = None
 player.fov_algo = 'BASIC'
 player.fov_light_walls = True
 player.object_id = 'p1'
+player.alive = True
 
 game = GameMaster('playing')
 
 # Main Game Loop
 while True:
+    # Check game state
+    if not player.alive:
+        game.game_state = 'dead'
+
     render(dungeon_map, game)
 
     terminal.layer(2)
