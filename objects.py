@@ -70,12 +70,15 @@ directions = [north, south, east, west, northeast, northwest, southeast,
 
 
 class Fighter:
-    def __init__(self, hp, defense, power, death_function=None):
+    def __init__(self, hp, defense, power, recharge, death_function=None):
         self.max_hp = hp
         self.hp = hp
         self.defense = defense
         self.power = power
+        self.recharge_timer = recharge
         self.death_function = death_function
+
+        self.power_meter = 100
 
     def take_damage(self, damage):
         if damage > 0:
@@ -87,7 +90,8 @@ class Fighter:
                 function(self.owner)
 
     def attack(self, target):
-        damage = self.power - target.fighter.defense
+        damage = math.floor((self.power * (self.power_meter / 100) -
+                  target.fighter.defense))
 
         if damage > 0:
             print(self.owner.name.capitalize() + ' attacks ' + target.name +
@@ -96,3 +100,9 @@ class Fighter:
         else:
             print(self.owner.name.capitalize() + ' attacks ' + target.name +
                   ' but it has no effect!')
+
+        self.power_meter = 0
+
+    def recharge(self):
+        if self.power_meter < 100:
+            self.power_meter += math.floor(100/self.recharge_timer)

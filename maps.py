@@ -227,14 +227,16 @@ class DungeonMap:
                 if randint(0, 100) < 80:
                     ai_component = game_ai.BasicMonster(20)
                     monster_fighter = objects.Fighter(hp=10, defense=0, power=3,
+                                      recharge=20,
                                       death_function=ai_component.monster_death)
                     monster = objects.GameObject('orc', x, y,
                                                  0xE101, blocks=True,
                                                  fighter=monster_fighter,
                                                  ai=ai_component)
                 else:
-                    ai_component = game_ai.BasicMonster(40)
+                    ai_component = game_ai.BasicMonster(30)
                     monster_fighter = objects.Fighter(hp=16, defense=1, power=4,
+                                      recharge=30,
                                       death_function=ai_component.monster_death)
                     monster = objects.GameObject('troll', x, y, 0xE100,
                                                   blocks=True,

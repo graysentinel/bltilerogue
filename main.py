@@ -118,8 +118,14 @@ def render(map, gm):
                   right_panel_width, right_panel_height,
                   terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
 
+    terminal.puts(right_panel_x, right_panel_y+1, "Power: " +
+                  str(p.fighter.power_meter) + "/100", right_panel_width,
+                  right_panel_height, terminal.TK_ALIGN_TOP |
+                  terminal.TK_ALIGN_CENTER)
+
     for x in range(0, terminal.TK_WIDTH):
         terminal.put(x, bottom_panel_y-1, 0x2588)
+
     terminal.printf(bottom_panel_x, bottom_panel_y+1, "Bottom Panel Here")
 
     terminal.puts(right_panel_x, bottom_panel_y, "Current Position:",
@@ -146,7 +152,7 @@ terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 
 # Initialize Game
-player_fighter = objects.Fighter(hp=30, defense=2, power=5,
+player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
 player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
 dungeon_map = maps.DungeonMap(75, 45)
@@ -172,6 +178,8 @@ while True:
     for obj in dungeon_map.objects:
         if obj.ai:
             obj.ai.take_turn()
+        if obj.fighter:
+            obj.fighter.recharge()
 
     player.action = player_input(player, game)
     if player.action == 'exit':
