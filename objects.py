@@ -19,11 +19,13 @@ class GameObject:
 
         self.object_id = None
 
-    def draw(self):
-        terminal.put(self.x*2, self.y, self.icon)
+    def draw(self, camera):
+        x, y = camera.to_camera_coordinates(self.x, self.y)
+        terminal.put(x*2, y, self.icon)
 
-    def clear(self):
-        terminal.put(self.x*2, self.y, ' ')
+    def clear(self, camera):
+        x, y = camera.to_camera_coordinates(self.x, self.y)
+        terminal.put(x*2, y, ' ')
 
     def move(self, direction):
         tgt_x = self.x + direction.goal_x
@@ -49,6 +51,48 @@ class GameObject:
     @property
     def current_position(self):
         return "(" + str(self.x) + "," + str(self.y) + ")"
+
+
+class Camera:
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+        self.x2 = self.x + self.width
+        self.y2 = self.y + self.height
+
+    def move(self, direction):
+        self.x += direction.goal_x
+        self.y += direction.goal_y
+        print("Camera Top-Left: ({}, {})".format(self.x, self.y))
+
+    def center_view(self, target):
+        self.x = target.x - (self.width // 2)
+        self.y = target.y - (self.height // 2)
+        print("Camera Top-Left: ({}, {})".format(self.x, self.y))
+
+    def in_fov(self, x, y):
+        x2 = self.x + self.width
+        y2 = self.y + self.height
+
+        if x in range(self.x, self.x) and y in range(self.y, self.y2):
+            return True
+
+        return False
+
+    def offset(self, x, y):
+        return x + self.x, y + self.y
+
+    def to_camera_coordinates(self, x, y):
+        (x, y) = (x - self.x, y - self.y)
+
+        return x, y
+
+    @property
+    def center(self):
+        return self.width // 2, self.height // 2
 
 
 class Direction:

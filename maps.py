@@ -215,6 +215,12 @@ class DungeonMap:
         else:
             return True
 
+    def out_of_bounds(self, x, y):
+        if x > self.width or y > self.height:
+            return True
+
+        return False
+
     def place_objects(self, room):
 
         num_monsters = random.randint(0, self.max_room_monsters)
@@ -291,6 +297,7 @@ class DungeonMapBSP(DungeonMap):
 
         player.x = player_room[0]
         player.y = player_room[1]
+        # print("Player Position: ({}, {})".format(player.x, player.y))
 
         for room in self.room_objects:
             self.place_objects(room)

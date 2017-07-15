@@ -46,7 +46,9 @@ def player_move_or_attack(p, direction):
     else:
         if not p.current_map.is_blocked_at(x, y):
             p.x, p.y = x, y
-            p.current_map.fov_recompute = True
+            print("Player Position: ({}, {})".format(p.x, p.y))
+            p.camera.move(direction)
+            # p.current_map.fov_recompute = True
 
 
 def player_death(p):
@@ -55,56 +57,54 @@ def player_death(p):
     p.icon = 0xE150
 
 
-def render(map, gm):
+def render(p, gm):
 
-    # get player object
-    p = None
-    for obj in map.objects:
-        if obj.name == 'player':
-            p = obj
-
+    terminal.clear()
     #calculate field of view for all rendering below
     #if map.fov_recompute:
         #map.fov_recompute = False
-    visible_tiles = tdl.map.quickFOV(p.x, p.y, map.is_visible_tile,
+    visible_tiles = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
                                      fov=p.fov_algo,
-                                     radius=map.default_torch_radius,
+                                     radius=p.current_map.default_torch_radius,
                                      lightWalls=p.fov_light_walls)
 
     ''' Render Object Layer '''
     terminal.layer(2)
-    for o in map.objects:
+    for o in p.current_map.objects:
         if (o.x, o.y) in visible_tiles:
-            o.draw()
+            o.draw(p.camera)
 
     ''' Render Map Layer '''
-
     terminal.layer(1)
-    for y in range(map.height):
-        for x in range(map.width):
-            visible = (x, y) in visible_tiles
-            tile = map.tiles[x][y]
-            if not visible:
-                if map.tiles_explored[x][y] == 1:
-                    terminal.put(x*2, y,
-                                 maps.terrain_types[tile].icon_unseen)
+    for y in range(p.camera.height):
+        for x in range(p.camera.width):
+            tile_x, tile_y = p.camera.offset(x, y)
+            visible = (tile_x, tile_y) in visible_tiles
+            if not p.current_map.out_of_bounds(tile_x, tile_y):
+                tile = p.current_map.tiles[tile_x][tile_y]
+                if not visible:
+                    if p.current_map.tiles_explored[tile_x][tile_y] == 1:
+                        terminal.put(x*2, y,
+                                     maps.terrain_types[tile].icon_unseen)
+                    else:
+                        terminal.put(x*2, y, 0xE050)
                 else:
-                    terminal.put(x*2, y, 0xE050)
+                    terminal.put(x*2, y, maps.terrain_types[tile].icon_seen)
+                    p.current_map.tiles_explored[tile_x][tile_y] = 1
             else:
-                terminal.put(x*2, y, maps.terrain_types[tile].icon_seen)
-                map.tiles_explored[x][y] = 1
+                terminal.put(x*2, y, 0xE050)
 
     ''' Render GUI '''
     terminal.layer(0)
     terminal.color("white")
 
-    right_panel_x = map.width * 2
+    right_panel_x = p.camera.width * 2
     right_panel_y = 1
-    right_panel_width = terminal.state(terminal.TK_WIDTH) - map.width*2
-    right_panel_height = terminal.state(terminal.TK_HEIGHT) - map.height
+    right_panel_width = terminal.state(terminal.TK_WIDTH) - p.camera.width*2
+    right_panel_height = terminal.state(terminal.TK_HEIGHT) - p.camera.height
 
     bottom_panel_x = 1
-    bottom_panel_y = map.height + 1
+    bottom_panel_y = p.camera.height + 1
     bottom_panel_width = terminal.state(terminal.TK_WIDTH) - right_panel_width
     bottom_panel_height = terminal.state(terminal.TK_HEIGHT) - bottom_panel_y
 
@@ -153,7 +153,7 @@ terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
 player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
-dungeon_map = maps.DungeonMapBSP(75, 45)
+dungeon_map = maps.DungeonMapBSP(100, 100)
 dungeon_map.make_map(player)
 dungeon_map.objects.append(player)
 
@@ -164,6 +164,10 @@ player.fov_light_walls = True
 player.object_id = 'p1'
 player.alive = True
 
+player_cam1 = objects.Camera(0, 0, 75, 45)
+player.camera = player_cam1
+player.camera.center_view(player)
+
 game = GameMaster('playing')
 
 # Main Game Loop
@@ -172,11 +176,11 @@ while True:
     if not player.alive:
         game.game_state = 'dead'
 
-    render(dungeon_map, game)
+    render(player, game)
 
     terminal.layer(2)
     for o in dungeon_map.objects:
-        o.clear()
+        o.clear(player.camera)
 
     for obj in dungeon_map.objects:
         if obj.ai:
