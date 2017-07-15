@@ -218,3 +218,9 @@ silver=(203,203,203)
 # miscellaneous
 celadon=(172,255,175)
 peach=(255,159,127)
+
+def convert_argb(a, color):
+    if len(color) == 3:
+        return a, color[0], color[1], color[2]
+    else:
+        raise ValueError("Not a valid RGB value!")

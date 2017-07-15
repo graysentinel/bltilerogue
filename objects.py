@@ -1,5 +1,7 @@
 from bearlibterminal import terminal
 import math
+import log
+import colors
 
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None):
@@ -21,11 +23,11 @@ class GameObject:
 
     def draw(self, camera):
         x, y = camera.to_camera_coordinates(self.x, self.y)
-        terminal.put(x*2, y, self.icon)
+        terminal.put(x*4, y*2, self.icon)
 
     def clear(self, camera):
         x, y = camera.to_camera_coordinates(self.x, self.y)
-        terminal.put(x*2, y, ' ')
+        terminal.put(x*4, y*2, ' ')
 
     def move(self, direction):
         tgt_x = self.x + direction.goal_x
@@ -66,12 +68,12 @@ class Camera:
     def move(self, direction):
         self.x += direction.goal_x
         self.y += direction.goal_y
-        print("Camera Top-Left: ({}, {})".format(self.x, self.y))
+        # print("Camera Top-Left: ({}, {})".format(self.x, self.y))
 
     def center_view(self, target):
         self.x = target.x - (self.width // 2)
         self.y = target.y - (self.height // 2)
-        print("Camera Top-Left: ({}, {})".format(self.x, self.y))
+        # print("Camera Top-Left: ({}, {})".format(self.x, self.y))
 
     def in_fov(self, x, y):
         x2 = self.x + self.width
@@ -138,12 +140,13 @@ class Fighter:
                   target.fighter.defense))
 
         if damage > 0:
-            print(self.owner.name.capitalize() + ' attacks ' + target.name +
-                  ' for ' + str(damage) + ' hit points!')
+            log.message(self.owner.name.capitalize() + ' attacks ' +
+                        target.name + ' for ' + str(damage) + ' hit points!',
+                        colors.orange)
             target.fighter.take_damage(damage)
         else:
-            print(self.owner.name.capitalize() + ' attacks ' + target.name +
-                  ' but it has no effect!')
+            log.message(self.owner.name.capitalize() + ' attacks ' + 
+                        target.name + ' but it has no effect!', colors.red)
 
         self.power_meter = 0
 

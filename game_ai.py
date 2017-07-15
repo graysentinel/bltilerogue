@@ -1,6 +1,8 @@
 import objects
 import random
 import time
+import log
+import colors
 
 class BasicMonster:
     def __init__(self, turn_timer, active_flag=False):
@@ -35,7 +37,7 @@ class BasicMonster:
                     self.turns = 0
 
     def monster_death(self, monster):
-        print(monster.name.capitalize() + ' dies!')
+        log.message(monster.name.capitalize() + ' dies!', colors.turquoise)
         monster.icon = 0xE150
         monster.blocks = False
         monster.fighter = None

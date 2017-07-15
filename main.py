@@ -2,6 +2,9 @@ from bearlibterminal import terminal
 import tdl
 import objects
 import maps
+import gui
+import colors
+import log
 
 class GameMaster:
     def __init__(self, game_state):
@@ -46,13 +49,13 @@ def player_move_or_attack(p, direction):
     else:
         if not p.current_map.is_blocked_at(x, y):
             p.x, p.y = x, y
-            print("Player Position: ({}, {})".format(p.x, p.y))
+            # print("Player Position: ({}, {})".format(p.x, p.y))
             p.camera.move(direction)
             # p.current_map.fov_recompute = True
 
 
 def player_death(p):
-    print('You died!')
+    log.message('You died!', colors.red)
     p.alive = False
     p.icon = 0xE150
 
@@ -84,53 +87,65 @@ def render(p, gm):
                 tile = p.current_map.tiles[tile_x][tile_y]
                 if not visible:
                     if p.current_map.tiles_explored[tile_x][tile_y] == 1:
-                        terminal.put(x*2, y,
+                        terminal.put(x*4, y*2,
                                      maps.terrain_types[tile].icon_unseen)
                     else:
-                        terminal.put(x*2, y, 0xE050)
+                        terminal.put(x*4, y*2, 0xE050)
                 else:
-                    terminal.put(x*2, y, maps.terrain_types[tile].icon_seen)
+                    terminal.put(x*4, y*2, maps.terrain_types[tile].icon_seen)
                     p.current_map.tiles_explored[tile_x][tile_y] = 1
             else:
-                terminal.put(x*2, y, 0xE050)
+                terminal.put(x*4, y*2, 0xE050)
 
     ''' Render GUI '''
     terminal.layer(0)
     terminal.color("white")
 
-    right_panel_x = p.camera.width * 2
+    right_panel_x = p.camera.width * 4
     right_panel_y = 1
-    right_panel_width = terminal.state(terminal.TK_WIDTH) - p.camera.width*2
-    right_panel_height = terminal.state(terminal.TK_HEIGHT) - p.camera.height
+    right_panel_width = terminal.state(terminal.TK_WIDTH) - p.camera.width*4
+    right_panel_height = terminal.state(terminal.TK_HEIGHT) - p.camera.height*2
 
     bottom_panel_x = 1
-    bottom_panel_y = p.camera.height + 1
+    bottom_panel_y = (p.camera.height * 2) + 1
     bottom_panel_width = terminal.state(terminal.TK_WIDTH) - right_panel_width
     bottom_panel_height = terminal.state(terminal.TK_HEIGHT) - bottom_panel_y
 
     for y in range(0, terminal.TK_HEIGHT-bottom_panel_height):
         terminal.put(right_panel_x, y, 0x2588)
 
-    terminal.puts(right_panel_x, right_panel_y, "Player HP: " +
+    terminal.puts(right_panel_x + 2, right_panel_y, "Player HP: " +
                   str(p.fighter.hp) + "/" + str(p.fighter.max_hp),
                   right_panel_width, right_panel_height,
-                  terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
+                  terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_LEFT)
 
-    terminal.puts(right_panel_x, right_panel_y+1, "Power: " +
+    gui.render_bar(right_panel_x + 2, right_panel_y + 1, right_panel_width-4,
+                   'attack power', p.fighter.power_meter, 100,
+                   colors.darker_red)
+
+    '''terminal.puts(right_panel_x, right_panel_y+1, "Power: " +
                   str(p.fighter.power_meter) + "/100", right_panel_width,
                   right_panel_height, terminal.TK_ALIGN_TOP |
-                  terminal.TK_ALIGN_CENTER)
+                  terminal.TK_ALIGN_CENTER)'''
 
     for x in range(0, terminal.TK_WIDTH):
         terminal.put(x, bottom_panel_y-1, 0x2588)
 
     terminal.printf(bottom_panel_x, bottom_panel_y+1, "Bottom Panel Here")
 
+    msg_line = 1
+    for line, msg_color in log.game_messages:
+        gui.terminal_set_color(255, msg_color)
+        terminal.puts(bottom_panel_x, bottom_panel_y+msg_line, line)
+        msg_line += 1
+
+    gui.terminal_set_color(255, colors.white)
+
     terminal.puts(right_panel_x, bottom_panel_y, "Current Position:",
                   right_panel_width, bottom_panel_height-1,
                   terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
     terminal.puts(right_panel_x, bottom_panel_y, p.current_position,
-                  right_panel_width, bottom_panel_height,
+                  right_panel_width, bottom_panel_height+1,
                   terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
 
     terminal.refresh()
@@ -141,12 +156,18 @@ def current_layer():
 
 # Initialize Window
 terminal.open()
-terminal.set("""U+E000: assets/rogue.png, size=16x16, align=center""")
-terminal.set("""U+E050: assets/floors.png, size=16x16, align=center""")
-terminal.set("""U+E060: assets/walls.png, size=16x16, align=center""")
-terminal.set("""U+E070: assets/doors.png, size=16x16, align=center""")
-terminal.set("""U+E100: assets/basic-monsters.png, size=16x16, align=center""")
-terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center""")
+terminal.set("""U+E000: assets/rogue.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E050: assets/floors.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E060: assets/walls.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E070: assets/doors.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E100: assets/basic-monsters.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
+                resize=32x32""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 
 # Initialize Game
@@ -164,11 +185,13 @@ player.fov_light_walls = True
 player.object_id = 'p1'
 player.alive = True
 
-player_cam1 = objects.Camera(0, 0, 75, 45)
+player_cam1 = objects.Camera(0, 0, 37, 22)
 player.camera = player_cam1
 player.camera.center_view(player)
 
 game = GameMaster('playing')
+
+log.message("Welcome to the jungle.", colors.red)
 
 # Main Game Loop
 while True:

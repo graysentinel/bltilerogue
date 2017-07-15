@@ -85,10 +85,10 @@ class DungeonMap:
         self.width = width
         self.height = height
         self.objects = []
-        self.tiles = [[ 0 for y in range(self.height) ]
-                        for x in range(self.width * 2) ]
-        self.tiles_explored = [[ 0 for y in range(self.height) ]
-                                 for x in range(self.width * 2) ]
+        self.tiles = [[ 0 for y in range(self.height * 2) ]
+                        for x in range(self.width * 4) ]
+        self.tiles_explored = [[ 0 for y in range(self.height * 2) ]
+                                 for x in range(self.width * 4) ]
         self.max_room_size = 10
         self.min_room_size = 4
         self.max_rooms = 30
@@ -216,7 +216,7 @@ class DungeonMap:
             return True
 
     def out_of_bounds(self, x, y):
-        if x > self.width or y > self.height:
+        if (x < 0 or x > self.width) or (y < 0 or y > self.height):
             return True
 
         return False
@@ -272,11 +272,11 @@ class DungeonMapBSP(DungeonMap):
         self.min_size = min_size
         self.full_rooms = full_rooms
 
-        self.tiles = [[ 0 for y in range(self.height) ]
-                        for x in range(self.width * 2) ]
+        self.tiles = [[ 0 for y in range(self.height * 2) ]
+                        for x in range(self.width * 4) ]
 
-        self.tiles_explored = [[ 0 for y in range(self.height) ]
-                                 for x in range(self.width * 2) ]
+        self.tiles_explored = [[ 0 for y in range(self.height * 2) ]
+                                 for x in range(self.width * 4) ]
 
         self.rooms = []
         self.room_objects = []
