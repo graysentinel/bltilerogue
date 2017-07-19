@@ -3,6 +3,7 @@ import random
 import time
 import log
 import colors
+from tcod import libtcodpy as tcod
 
 class BasicMonster:
     def __init__(self, turn_timer, active_flag=False):
@@ -28,13 +29,41 @@ class BasicMonster:
                     self.active = False
                 else:
                     if monster.distance_to(p) >= 2:
-                        x, y = monster.move_towards(p.x, p.y)
-                        if not monster.current_map.is_blocked_at(x, y):
-                            monster.x, monster.y = x, y
+                        self.move_astar(p)
                     elif p.fighter.hp > 0:
                         monster.fighter.attack(p)
 
                     self.turns = 0
+
+    def move_astar(self, target):
+        monster = self.owner
+        fov = tcod.map_new(monster.current_map.width,
+                           monster.current_map.height)
+
+        for y1 in range(monster.current_map.height):
+            for x1 in range(monster.current_map.width):
+                tcod.map_set_properties(fov, x1, y1,
+                not monster.current_map.sight_blocked_at(x1, y1),
+                not monster.current_map.is_blocked_at(x1, y1))
+
+        monster_path = tcod.path_new_using_map(fov, 1.41)
+        tcod.path_compute(monster_path, monster.x, monster.y, target.x,
+                          target.y)
+
+        if not (tcod.path_is_empty(monster_path) and
+            tcod.path_size(monster_path) < 25):
+
+            x, y = tcod.path_walk(monster_path, True)
+            if not monster.current_map.is_blocked_at(x, y):
+                monster.x = x
+                monster.y = y
+
+        else:
+            x, y = monster.move_towards(target.x, target.y)
+            if not monster.current_map.is_blocked_at(x, y):
+                monster.x, monster.y = x, y
+
+        tcod.path_delete(monster_path)
 
     def monster_death(self, monster):
         log.message(monster.name.capitalize() + ' dies!', colors.turquoise)
@@ -43,6 +72,7 @@ class BasicMonster:
         monster.fighter = None
         monster.ai = None
         monster.name = 'Remains of ' + monster.name
+        monster.send_to_back()
 
 
 

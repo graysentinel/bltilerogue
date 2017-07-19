@@ -50,6 +50,10 @@ class GameObject:
         dy = other.y - self.y
         return math.sqrt(dx ** 2 + dy ** 2)
 
+    def send_to_back(self):
+        self.current_map.objects.remove(self)
+        self.current_map.objects.insert(0, self)
+
     @property
     def current_position(self):
         return "(" + str(self.x) + "," + str(self.y) + ")"
@@ -145,7 +149,7 @@ class Fighter:
                         colors.orange)
             target.fighter.take_damage(damage)
         else:
-            log.message(self.owner.name.capitalize() + ' attacks ' + 
+            log.message(self.owner.name.capitalize() + ' attacks ' +
                         target.name + ' but it has no effect!', colors.red)
 
         self.power_meter = 0
