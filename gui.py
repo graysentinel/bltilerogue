@@ -14,3 +14,6 @@ def terminal_set_color(alpha, color):
     color_argb = colors.convert_argb(alpha, color)
     terminal.color(terminal.color_from_argb(a=color_argb[0], r=color_argb[1],
                    g=color_argb[2], b=color_argb[3]))
+
+def terminal_reset_color():
+    terminal.color("white")

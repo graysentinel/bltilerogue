@@ -2,6 +2,7 @@ import random
 import objects
 import idgen
 import game_ai
+import colors
 from tcod import libtcodpy as tcod
 
 '''
@@ -159,6 +160,18 @@ class DungeonMap:
                 self.rooms.append(new_room)
                 self.place_objects(new_room)
                 num_rooms += 1
+
+        # debug light casting
+        torch_room = random.choice(self.rooms)
+        torch_x = random.randint(torch_room.x, torch_room.x2)
+        torch_y = random.randint(torch_room.y, torch_room.y2)
+        torchlight = objects.LightSource(radius=2, color=colors.lighter_yellow)
+        print(torchlight.tiles_lit)
+        torch = objects.GameObject('torch', torch_x, torch_y, 0xE200,
+                                   light_source=torchlight)
+        torch.current_map = self
+        torch.light_source.cast_light()
+        self.objects.append(torch)
 
         self.assign_object_ids()
 

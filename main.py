@@ -68,34 +68,47 @@ def render(p, gm):
         #map.fov_recompute = False
     visible_tiles = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
                                      fov=p.fov_algo,
-                                     radius=p.current_map.default_torch_radius,
+                                     radius=p.sight_radius,
                                      lightWalls=p.fov_light_walls)
+
+    light_source_tiles = []
 
     ''' Render Object Layer '''
     terminal.layer(2)
     for o in p.current_map.objects:
         if (o.x, o.y) in visible_tiles:
             o.draw(p.camera)
+        if o.light_source:
+            for x, y in o.light_source.tiles_lit:
+                light_source_tiles.append((x, y, o.light_source.color))
 
     ''' Render Map Layer '''
     terminal.layer(1)
     for y in range(p.camera.height):
         for x in range(p.camera.width):
-            tile_x, tile_y = p.camera.offset(x, y)
-            visible = (tile_x, tile_y) in visible_tiles
-            if not p.current_map.out_of_bounds(tile_x, tile_y):
-                tile = p.current_map.tiles[tile_x][tile_y]
+            tx, ty = p.camera.offset(x, y)
+            visible = (tx, ty) in visible_tiles
+            if not p.current_map.out_of_bounds(tx, ty):
+                tile = p.current_map.tiles[tx][ty]
                 if not visible:
-                    if p.current_map.tiles_explored[tile_x][tile_y] == 1:
+                    if p.current_map.tiles_explored[tx][ty] == 1:
                         terminal.put(x*4, y*2,
-                                     maps.terrain_types[tile].icon_unseen)
+                                   maps.terrain_types[tile].icon_unseen)
                     else:
                         terminal.put(x*4, y*2, 0xE050)
                 else:
                     terminal.put(x*4, y*2, maps.terrain_types[tile].icon_seen)
-                    p.current_map.tiles_explored[tile_x][tile_y] = 1
+                    p.current_map.tiles_explored[tx][ty] = 1
             else:
                 terminal.put(x*4, y*2, 0xE050)
+
+            #print(light_source_tiles)
+            for lx, ly, lcolor in light_source_tiles:
+                if lx == tx and ly == ty:
+                    gui.terminal_set_color(200, lcolor)
+                    terminal.put(x*4, y*2,
+                                 maps.terrain_types[tile].icon_seen)
+                    gui.terminal_reset_color()
 
     ''' Render GUI '''
     terminal.layer(0)
@@ -130,8 +143,6 @@ def render(p, gm):
 
     for x in range(0, terminal.TK_WIDTH):
         terminal.put(x, bottom_panel_y-1, 0x2588)
-
-    terminal.printf(bottom_panel_x, bottom_panel_y+1, "Bottom Panel Here")
 
     msg_line = 1
     for line, msg_color in log.game_messages:
@@ -168,13 +179,15 @@ terminal.set("""U+E100: assets/basic-monsters.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
                 resize=32x32""")
+terminal.set("""U+E200: assets/items.png, size=16x16, align=center,
+                resize=32x32""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 
 # Initialize Game
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
 player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
-dungeon_map = maps.DungeonMapBSP(100, 100)
+dungeon_map = maps.DungeonMap(100, 100)
 dungeon_map.make_map(player)
 dungeon_map.objects.append(player)
 
@@ -184,6 +197,7 @@ player.fov_algo = 'BASIC'
 player.fov_light_walls = True
 player.object_id = 'p1'
 player.alive = True
+player.sight_radius = 5
 
 player_cam1 = objects.Camera(0, 0, 37, 22)
 player.camera = player_cam1

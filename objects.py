@@ -2,9 +2,11 @@ from bearlibterminal import terminal
 import math
 import log
 import colors
+import raycast
 
 class GameObject:
-    def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None):
+    def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
+                 light_source=None):
         self.name = name
         self.x = x
         self.y = y
@@ -18,6 +20,10 @@ class GameObject:
         self.ai = ai
         if self.ai:
             self.ai.owner = self
+
+        self.light_source = light_source
+        if self.light_source:
+            self.light_source.owner = self
 
         self.object_id = None
 
@@ -157,3 +163,33 @@ class Fighter:
     def recharge(self):
         if self.power_meter < 100:
             self.power_meter += math.floor(100/self.recharge_timer)
+
+
+class LightSource:
+    def __init__(self, radius, color):
+        self.radius = radius
+        self.color = color
+        self.tiles_lit = []
+
+    def cast_light(self):
+        obj = self.owner
+        w = obj.current_map.width
+        h = obj.current_map.height
+
+        for i in range(0, raycast.RAYS + 1, raycast.STEP):
+            ax = raycast.sintable[i]
+            ay = raycast.costable[i]
+
+            x, y = obj.x, obj.y
+
+            for z in range(self.radius):
+                x += ax
+                y += ay
+
+                if x < 0 or y < 0 or x > w or y > h:
+                    break
+
+                self.tiles_lit.append((int(round(x)), int(round(y))))
+
+                if obj.current_map.tiles[int(round(x))][int(round(y))] == 0:
+                    break
