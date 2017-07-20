@@ -66,10 +66,16 @@ def render(p, gm):
     #calculate field of view for all rendering below
     #if map.fov_recompute:
         #map.fov_recompute = False
+
+    ''' Set visible and maximum view distance '''
     visible_tiles = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
                                      fov=p.fov_algo,
                                      radius=p.sight_radius,
                                      lightWalls=p.fov_light_walls)
+
+    max_visible = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
+                                   fov=p.fov_algo, radius=10,
+                                   lightWalls=p.fov_light_walls)
 
     light_source_tiles = []
 
@@ -78,12 +84,18 @@ def render(p, gm):
     for o in p.current_map.objects:
         if (o.x, o.y) in visible_tiles:
             o.draw(p.camera)
-        if o.light_source:
+        if o.light_source and (o.x, o.y) in max_visible:
+            gui.terminal_set_color(255, o.light_source.color)
+            o.draw(p.camera)
             for x, y in o.light_source.tiles_lit:
                 light_source_tiles.append((x, y, o.light_source.color))
 
+
     ''' Render Map Layer '''
     terminal.layer(1)
+
+    ''' Render Primary Vision '''
+    gui.terminal_set_color(255, colors.light_blue)
     for y in range(p.camera.height):
         for x in range(p.camera.width):
             tx, ty = p.camera.offset(x, y)
@@ -102,13 +114,18 @@ def render(p, gm):
             else:
                 terminal.put(x*4, y*2, 0xE050)
 
+    ''' Render Max Vision '''
+    for y in range(p.camera.height):
+        for x in range(p.camera.width):
+            vx, vy = p.camera.offset(x, y)
+            in_max_visible_range = (vx, vy) in max_visible
             #print(light_source_tiles)
             for lx, ly, lcolor in light_source_tiles:
-                if lx == tx and ly == ty:
-                    gui.terminal_set_color(200, lcolor)
+                tile = p.current_map.tiles[vx][vy]
+                if lx == vx and ly == vy:
+                    gui.terminal_set_color(255, lcolor)
                     terminal.put(x*4, y*2,
                                  maps.terrain_types[tile].icon_seen)
-                    gui.terminal_reset_color()
 
     ''' Render GUI '''
     terminal.layer(0)
@@ -187,7 +204,7 @@ terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
 player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
-dungeon_map = maps.DungeonMap(100, 100)
+dungeon_map = maps.DungeonMap(50, 50)
 dungeon_map.make_map(player)
 dungeon_map.objects.append(player)
 
@@ -197,7 +214,7 @@ player.fov_algo = 'BASIC'
 player.fov_light_walls = True
 player.object_id = 'p1'
 player.alive = True
-player.sight_radius = 5
+player.sight_radius = 3
 
 player_cam1 = objects.Camera(0, 0, 37, 22)
 player.camera = player_cam1

@@ -163,10 +163,10 @@ class DungeonMap:
 
         # debug light casting
         torch_room = random.choice(self.rooms)
-        torch_x = random.randint(torch_room.x, torch_room.x2)
-        torch_y = random.randint(torch_room.y, torch_room.y2)
+        torch_x = random.randint(torch_room.x+1, torch_room.x2-1)
+        torch_y = random.randint(torch_room.y+1, torch_room.y2-1)
+        print(torch_x, torch_y)
         torchlight = objects.LightSource(radius=2, color=colors.lighter_yellow)
-        print(torchlight.tiles_lit)
         torch = objects.GameObject('torch', torch_x, torch_y, 0xE200,
                                    light_source=torchlight)
         torch.current_map = self
