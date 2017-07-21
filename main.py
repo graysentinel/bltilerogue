@@ -78,18 +78,26 @@ def render(p, gm):
                                    lightWalls=p.fov_light_walls)
 
     light_source_tiles = []
+    lit_tiles = []
 
     ''' Render Object Layer '''
     terminal.layer(2)
     for o in p.current_map.objects:
-        if (o.x, o.y) in visible_tiles:
-            o.draw(p.camera)
-        if o.light_source and (o.x, o.y) in max_visible:
-            gui.terminal_set_color(255, o.light_source.color)
-            o.draw(p.camera)
+        if o.light_source:
             for x, y in o.light_source.tiles_lit:
+                # visible_tiles.add((x, y))
+                lit_tiles.append((x, y))
                 light_source_tiles.append((x, y, o.light_source.color))
+            if (o.x, o.y) in max_visible:
+                gui.terminal_set_color(255, o.light_source.color)
+                o.draw(p.camera)
 
+        else:
+            if (o.x, o.y) in max_visible and (o.x, o.y) in lit_tiles:
+                o.draw(p.camera)
+
+            if (o.x, o.y) in visible_tiles:
+                o.draw(p.camera)
 
     ''' Render Map Layer '''
     terminal.layer(1)
@@ -114,18 +122,24 @@ def render(p, gm):
             else:
                 terminal.put(x*4, y*2, 0xE050)
 
-    ''' Render Max Vision '''
+    ''' Render Light Effects '''
     for y in range(p.camera.height):
         for x in range(p.camera.width):
             vx, vy = p.camera.offset(x, y)
             in_max_visible_range = (vx, vy) in max_visible
             #print(light_source_tiles)
-            for lx, ly, lcolor in light_source_tiles:
-                tile = p.current_map.tiles[vx][vy]
-                if lx == vx and ly == vy:
-                    gui.terminal_set_color(255, lcolor)
-                    terminal.put(x*4, y*2,
-                                 maps.terrain_types[tile].icon_seen)
+            if in_max_visible_range:
+                for lx, ly, lcolor in light_source_tiles:
+                    tile = p.current_map.tiles[vx][vy]
+                    if lx == vx and ly == vy:
+                        d = int(round(p.distance_to_square(lx, ly)))
+                        a = objects.distance_to_alpha[d]
+                        terminal.layer(4)
+                        gui.tile_dimmer(x, y, a)
+                        terminal.layer(1)
+                        gui.terminal_set_color(255, lcolor)
+                        terminal.put(x*4, y*2,
+                                     maps.terrain_types[tile].icon_seen)
 
     ''' Render GUI '''
     terminal.layer(0)

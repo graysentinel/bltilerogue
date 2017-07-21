@@ -57,11 +57,13 @@ class BasicMonster:
             if not monster.current_map.is_blocked_at(x, y):
                 monster.x = x
                 monster.y = y
+                # print("{} Position: {}, {}".format(monster.name, x, y))
 
         else:
             x, y = monster.move_towards(target.x, target.y)
             if not monster.current_map.is_blocked_at(x, y):
                 monster.x, monster.y = x, y
+                # print("{} Position: {}, {}".format(monster.name, x, y))
 
         tcod.path_delete(monster_path)
 

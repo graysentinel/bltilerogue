@@ -17,3 +17,13 @@ def terminal_set_color(alpha, color):
 
 def terminal_reset_color():
     terminal.color("white")
+
+def tile_dimmer(x, y, alpha):
+    terminal_set_color(alpha, colors.black)
+    terminal.put(x*4, y*2, 0xE050)
+    terminal_reset_color()
+
+def light_effect(x, y, light_alpha, light_color):
+    terminal_set_color(light_alpha, light_color)
+    terminal.put(x*4, y*2, 0xE050)
+    terminal_reset_color()

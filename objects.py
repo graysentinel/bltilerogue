@@ -56,6 +56,11 @@ class GameObject:
         dy = other.y - self.y
         return math.sqrt(dx ** 2 + dy ** 2)
 
+    def distance_to_square(self, x, y):
+        dx = x - self.x
+        dy = y - self.y
+        return math.sqrt(dx ** 2 + dy ** 2)
+
     def send_to_back(self):
         self.current_map.objects.remove(self)
         self.current_map.objects.insert(0, self)
@@ -164,6 +169,8 @@ class Fighter:
         if self.power_meter < 100:
             self.power_meter += math.floor(100/self.recharge_timer)
 
+distance_to_alpha = {11: 175, 10 : 125, 9 : 100, 8 : 75, 7 : 50, 6 : 25,
+                     5: 0, 4 : 0, 3 : 0, 2 : 0, 1 : 0, 0 : 0}
 
 class LightSource:
     def __init__(self, radius, color):
@@ -193,3 +200,5 @@ class LightSource:
 
                 if obj.current_map.tiles[int(round(x))][int(round(y))] == 0:
                     break
+
+        self.tiles_lit.append((obj.x, obj.y))
