@@ -31,6 +31,12 @@ def player_input(p, gm):
                 player_move_or_attack(p, objects.north)
             elif key == terminal.TK_DOWN:
                 player_move_or_attack(p, objects.south)
+            elif key == terminal.TK_COMMA:
+                for obj in p.current_map.objects:
+                    if obj.x == p.x and obj.y == p.y and obj.item:
+                        p.inventory.pick_up(obj)
+            elif key == terminal.TK_I:
+                p.inventory.list_items()
             else:
                 return 'no-turn'
 
@@ -163,9 +169,34 @@ def render(p, gm):
                   right_panel_width, right_panel_height,
                   terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_LEFT)
 
-    gui.render_bar(right_panel_x + 2, right_panel_y + 1, right_panel_width-4,
+    terminal.puts(right_panel_x + 2, right_panel_y + 2, "Attack Power")
+
+    gui.render_bar(right_panel_x + 2, right_panel_y + 3, right_panel_width-4,
                    'attack power', p.fighter.power_meter, 100,
                    colors.darker_red)
+
+    terminal.puts(right_panel_x + 2, right_panel_y + 26, "1")
+    gui.render_box(right_panel_x + 4, right_panel_y + 25,
+                   p.inventory, 'a')
+
+    terminal.puts(right_panel_x + 2, right_panel_y + 29, "2")
+    gui.render_box(right_panel_x + 4, right_panel_y + 28,
+                   p.inventory, 'b')
+
+    terminal.puts(right_panel_x + 2, right_panel_y + 32, "3")
+    gui.render_box(right_panel_x + 4, right_panel_y + 31,
+                   p.inventory, 'c')
+
+    terminal.puts(right_panel_x + 2, right_panel_y + 35, "4")
+    gui.render_box(right_panel_x + 4, right_panel_y + 34,
+                   p.inventory, 'd')
+
+    terminal.puts(right_panel_x + 2, right_panel_y + 38, "5")
+    gui.render_box(right_panel_x + 4, right_panel_y + 37,
+                   p.inventory, 'e')
+
+    '''terminal.puts(right_panel_x + 8, right_panel_y + 26,
+                  p.inventory.get_item_name('a'))'''
 
     '''terminal.puts(right_panel_x, right_panel_y+1, "Power: " +
                   str(p.fighter.power_meter) + "/100", right_panel_width,
@@ -229,6 +260,9 @@ player.fov_light_walls = True
 player.object_id = 'p1'
 player.alive = True
 player.sight_radius = 3
+
+inv = objects.Inventory()
+player.inventory = inv
 
 player_cam1 = objects.Camera(0, 0, 37, 22)
 player.camera = player_cam1

@@ -95,6 +95,8 @@ class DungeonMap:
         self.max_rooms = 30
         self.max_room_monsters = 3
 
+        self.max_room_items = 2
+
         self.rooms = []
 
         self.default_torch_radius = 5
@@ -265,6 +267,22 @@ class DungeonMap:
 
                 monster.current_map = self
                 self.objects.append(monster)
+
+        num_items = random.randint(0, self.max_room_items)
+
+        for i in range(num_items):
+            x = random.randint(room.x+1, room.x2-1)
+            y = random.randint(room.y+1, room.y2-1)
+
+            if not self.is_blocked_at(x, y):
+                item_component = objects.Item()
+                item = objects.GameObject('healing potion', x, y, 0xE201,
+                                          item=item_component)
+
+                self.objects.append(item)
+                item.current_map = self
+                item.send_to_back()
+
 
     def assign_object_ids(self):
         pool = idgen.generate_id_pool(len(self.objects))

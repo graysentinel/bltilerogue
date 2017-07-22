@@ -6,7 +6,7 @@ import raycast
 
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
-                 light_source=None):
+                 light_source=None, item=None):
         self.name = name
         self.x = x
         self.y = y
@@ -24,6 +24,10 @@ class GameObject:
         self.light_source = light_source
         if self.light_source:
             self.light_source.owner = self
+
+        self.item = item
+        if self.item:
+            self.item.owner = self
 
         self.object_id = None
 
@@ -202,3 +206,41 @@ class LightSource:
                     break
 
         self.tiles_lit.append((obj.x, obj.y))
+
+
+class Inventory:
+    def __init__(self):
+        self.slots = {'a' : None, 'b' : None, 'c' : None, 'd' : None,
+                      'e' : None}
+
+    def pick_up(self, item):
+        for key, slot in self.slots.items():
+            if slot is None:
+                log.message("You picked up a " + item.name + "!", colors.white)
+                self.slots[key] = item
+                item.current_map.objects.remove(item)
+                break
+
+    def list_items(self):
+        for key, slot in self.slots.items():
+            if slot is None:
+                print('Empty')
+            else:
+                print(slot.name)
+
+    def get_item_name(self, key):
+        if self.slots[key] is None:
+            return 'Empty'
+        else:
+            return self.slots[key].name
+
+    def get_item_icon(self, key):
+        if self.slots[key] is None:
+            return 0x0020
+        else:
+            return self.slots[key].icon
+
+
+class Item:
+    def __init__(self, use_function=None):
+        self.use_function = use_function
