@@ -6,6 +6,12 @@ import gui
 import colors
 import log
 
+attack_animations = {'west' : 0xE250, 'northwest' : 0xE251,
+                     'north' : 0xE252, 'northeast' : 0xE253, 'east': 0xE254,
+                     'southeast' : 0xE255, 'south' : 0xE256,
+                     'southwest' : 0xE257}
+
+
 class GameMaster:
     def __init__(self, game_state):
         self.game_state = game_state
@@ -23,13 +29,13 @@ def player_input(p, gm):
             return 'exit'
 
         if gm.game_state == 'playing':
-            if key == terminal.TK_LEFT:
+            if key == terminal.TK_A:
                 player_move_or_attack(p, objects.west)
-            elif key == terminal.TK_RIGHT:
+            elif key == terminal.TK_D:
                 player_move_or_attack(p, objects.east)
-            elif key == terminal.TK_UP:
+            elif key == terminal.TK_W:
                 player_move_or_attack(p, objects.north)
-            elif key == terminal.TK_DOWN:
+            elif key == terminal.TK_S:
                 player_move_or_attack(p, objects.south)
             elif key == terminal.TK_COMMA:
                 for obj in p.current_map.objects:
@@ -37,6 +43,22 @@ def player_input(p, gm):
                         p.inventory.pick_up(obj)
             elif key == terminal.TK_I:
                 p.inventory.list_items()
+            elif key == terminal.TK_KP_4:
+                player_attack(p, objects.west, 'west')
+            elif key == terminal.TK_KP_7:
+                player_attack(p, objects.northwest, 'northwest')
+            elif key == terminal.TK_KP_8:
+                player_attack(p, objects.north, 'north')
+            elif key == terminal.TK_KP_9:
+                player_attack(p, objects.northeast, 'northeast')
+            elif key == terminal.TK_KP_6:
+                player_attack(p, objects.east, 'east')
+            elif key == terminal.TK_KP_3:
+                player_attack(p, objects.southeast, 'southeast')
+            elif key == terminal.TK_KP_2:
+                player_attack(p, objects.south, 'south')
+            elif key == terminal.TK_KP_1:
+                player_attack(p, objects.southwest, 'southwest')
             else:
                 return 'no-turn'
 
@@ -49,15 +71,33 @@ def player_move_or_attack(p, direction):
         if obj.fighter and (obj.x == x and obj.y == y):
             target = obj
             break
+    '''
+    if target is not None:
+        p.fighter.attack(target)
+
+    else:
+    '''
+    if not p.current_map.is_blocked_at(x, y):
+        p.x, p.y = x, y
+        # print("Player Position: ({}, {})".format(p.x, p.y))
+        p.camera.move(direction)
+        # p.current_map.fov_recompute = True
+
+
+def player_attack(p, direction, direction_string):
+    p.attack = direction_string
+    p.attack_direction = direction
+    target = None
+    target_x = p.x + direction.goal_x
+    target_y = p.y + direction.goal_y
+
+    for obj in p.current_map.objects:
+        if obj.fighter and (obj.x == target_x and obj.y == target_y):
+            target = obj
+            break
 
     if target is not None:
         p.fighter.attack(target)
-    else:
-        if not p.current_map.is_blocked_at(x, y):
-            p.x, p.y = x, y
-            # print("Player Position: ({}, {})".format(p.x, p.y))
-            p.camera.move(direction)
-            # p.current_map.fov_recompute = True
 
 
 def player_death(p):
@@ -104,6 +144,17 @@ def render(p, gm):
 
             if (o.x, o.y) in visible_tiles:
                 o.draw(p.camera)
+
+    if p.attack is not None and p.fighter.power_meter < 20:
+        target_x = p.x + p.attack_direction.goal_x
+        target_y = p.y + p.attack_direction.goal_y
+        weapon_x, weapon_y = p.camera.to_camera_coordinates(target_x, target_y)
+        # terminal.put(target_x, target_y, attack_animations[p.attack])
+        terminal.put(weapon_x*4, weapon_y*2, attack_animations[p.attack])
+
+    if p.fighter.power_meter >= 20:
+        p.attack = None
+        p.attack_direction = None
 
     ''' Render Map Layer '''
     terminal.layer(1)
@@ -175,6 +226,17 @@ def render(p, gm):
                    'attack power', p.fighter.power_meter, 100,
                    colors.darker_red)
 
+    inventory_x = right_panel_x + 4
+    inventory_y = right_panel_y + 5
+
+    terminal.put(inventory_x, inventory_y, 0xE253)
+    terminal.puts(inventory_x + 4, inventory_y, "Strength: " +
+                  str(p.fighter.power))
+
+    terminal.put(inventory_x, inventory_y + 2, 0xE300)
+    terminal.puts(inventory_x + 4, inventory_y + 2, "Defense: " +
+                  str(p.fighter.defense))
+
     terminal.puts(right_panel_x + 2, right_panel_y + 26, "1")
     gui.render_box(right_panel_x + 4, right_panel_y + 25,
                    p.inventory, 'a')
@@ -243,7 +305,12 @@ terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E200: assets/items.png, size=16x16, align=center,
                 resize=32x32""")
+terminal.set("""U+E250: assets/sword.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E300: assets/armor.png, size=16x16, align=center,
+                resize=32x32""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
+terminal.composition(True)
 
 # Initialize Game
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
@@ -260,6 +327,8 @@ player.fov_light_walls = True
 player.object_id = 'p1'
 player.alive = True
 player.sight_radius = 3
+player.attack = None
+player.attack_direction = None
 
 inv = objects.Inventory()
 player.inventory = inv

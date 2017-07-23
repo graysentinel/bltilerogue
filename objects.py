@@ -108,7 +108,6 @@ class Camera:
 
     def to_camera_coordinates(self, x, y):
         (x, y) = (x - self.x, y - self.y)
-
         return x, y
 
     @property
