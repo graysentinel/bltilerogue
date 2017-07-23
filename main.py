@@ -150,7 +150,7 @@ def render(p, gm):
         target_y = p.y + p.attack_direction.goal_y
         weapon_x, weapon_y = p.camera.to_camera_coordinates(target_x, target_y)
         # terminal.put(target_x, target_y, attack_animations[p.attack])
-        terminal.put(weapon_x*4, weapon_y*2, attack_animations[p.attack])
+        terminal.put(weapon_x*4, weapon_y*2, 0xE275)
 
     if p.fighter.power_meter >= 20:
         p.attack = None
@@ -306,6 +306,8 @@ terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
 terminal.set("""U+E200: assets/items.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E250: assets/sword.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E275: assets/swordslash.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E300: assets/armor.png, size=16x16, align=center,
                 resize=32x32""")
