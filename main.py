@@ -59,6 +59,16 @@ def player_input(p, gm):
                 player_attack(p, objects.south, 'south')
             elif key == terminal.TK_KP_1:
                 player_attack(p, objects.southwest, 'southwest')
+            elif key == terminal.TK_1:
+                p.inventory.slots['a'].stored.item.use(p, 'a')
+            elif key == terminal.TK_2:
+                p.inventory.slots['b'].stored.item.use(p, 'b')
+            elif key == terminal.TK_3:
+                p.inventory.slots['c'].stored.item.use(p, 'c')
+            elif key == terminal.TK_4:
+                p.inventory.slots['d'].stored.item.use(p, 'd')
+            elif key == terminal.TK_5:
+                p.inventory.slots['e'].stored.item.use(p, 'e')
             else:
                 return 'no-turn'
 

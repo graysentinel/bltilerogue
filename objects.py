@@ -172,6 +172,12 @@ class Fighter:
         if self.power_meter < 100:
             self.power_meter += math.floor(100/self.recharge_timer)
 
+    def heal(self, amount):
+        self.hp += amount
+        if self.hp > self.max_hp:
+            self.hp = self.max_hp
+
+
 distance_to_alpha = {11: 175, 10 : 125, 9 : 100, 8 : 75, 7 : 50, 6 : 25,
                      5: 0, 4 : 0, 3 : 0, 2 : 0, 1 : 0, 0 : 0}
 
@@ -207,39 +213,66 @@ class LightSource:
         self.tiles_lit.append((obj.x, obj.y))
 
 
+class InventorySlot:
+    def __init__(self):
+        self.stored = None
+        self.num_stored = 0
+
+
 class Inventory:
     def __init__(self):
-        self.slots = {'a' : None, 'b' : None, 'c' : None, 'd' : None,
-                      'e' : None}
+        self.slot_1 = InventorySlot()
+        self.slot_2 = InventorySlot()
+        self.slot_3 = InventorySlot()
+        self.slot_4 = InventorySlot()
+        self.slot_5 = InventorySlot()
+
+        self.slots = {'a' : self.slot_1, 'b' : self.slot_2, 'c' : self.slot_3,
+                      'd' : self.slot_4, 'e' : self.slot_5}
 
     def pick_up(self, item):
         for key, slot in self.slots.items():
-            if slot is None:
+            if slot.stored is None:
                 log.message("You picked up a " + item.name + "!", colors.white)
-                self.slots[key] = item
+                self.slots[key].stored = item
+                self.slots[key].num_stored += 1
                 item.current_map.objects.remove(item)
                 break
 
     def list_items(self):
         for key, slot in self.slots.items():
-            if slot is None:
+            if slot.stored is None:
                 print('Empty')
             else:
-                print(slot.name)
+                print(slot.name) + ' (' + str(slot.num_stored) + ')'
 
     def get_item_name(self, key):
-        if self.slots[key] is None:
+        if self.slots[key].stored is None:
             return 'Empty'
         else:
-            return self.slots[key].name
+            return (self.slots[key].stored.name + ' (' +
+                str(self.slots[key].num_stored) + ')')
 
     def get_item_icon(self, key):
-        if self.slots[key] is None:
+        if self.slots[key].stored is None:
             return 0x0020
         else:
-            return self.slots[key].icon
+            return self.slots[key].stored.icon
+
+    def remove(self, key):
+        self.slots[key].num_stored -= 1
+        if self.slots[key].num_stored == 0:
+            self.slots[key].stored = None
 
 
 class Item:
     def __init__(self, use_function=None):
         self.use_function = use_function
+
+    def use(self, actor, key):
+        if self.use_function is None:
+            log.message("The " + self.owner.name + " can't be used.",
+                        colors.white)
+        else:
+            if self.use_function(actor) != 'cancelled':
+                actor.inventory.remove(key)

@@ -4,6 +4,8 @@ import idgen
 import game_ai
 import colors
 from tcod import libtcodpy as tcod
+import effects
+
 
 '''
 tile_types = {0: 'blank', 50: 'rock', 51: 'light_floor',
@@ -275,7 +277,7 @@ class DungeonMap:
             y = random.randint(room.y+1, room.y2-1)
 
             if not self.is_blocked_at(x, y):
-                item_component = objects.Item()
+                item_component = objects.Item(use_function=effects.cast_heal)
                 item = objects.GameObject('healing potion', x, y, 0xE201,
                                           item=item_component)
 
