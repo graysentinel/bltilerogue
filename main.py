@@ -5,6 +5,7 @@ import maps
 import gui
 import colors
 import log
+import effects
 
 attack_animations = {'west' : 0xE250, 'northwest' : 0xE251,
                      'north' : 0xE252, 'northeast' : 0xE253, 'east': 0xE254,
@@ -44,21 +45,21 @@ def player_input(p, gm):
             elif key == terminal.TK_I:
                 p.inventory.list_items()
             elif key == terminal.TK_KP_4:
-                player_attack(p, objects.west, 'west')
+                player_attack(p, objects.west, 'w')
             elif key == terminal.TK_KP_7:
-                player_attack(p, objects.northwest, 'northwest')
+                player_attack(p, objects.northwest, 'nw')
             elif key == terminal.TK_KP_8:
-                player_attack(p, objects.north, 'north')
+                player_attack(p, objects.north, 'n')
             elif key == terminal.TK_KP_9:
-                player_attack(p, objects.northeast, 'northeast')
+                player_attack(p, objects.northeast, 'ne')
             elif key == terminal.TK_KP_6:
-                player_attack(p, objects.east, 'east')
+                player_attack(p, objects.east, 'e')
             elif key == terminal.TK_KP_3:
-                player_attack(p, objects.southeast, 'southeast')
+                player_attack(p, objects.southeast, 'se')
             elif key == terminal.TK_KP_2:
-                player_attack(p, objects.south, 'south')
+                player_attack(p, objects.south, 's')
             elif key == terminal.TK_KP_1:
-                player_attack(p, objects.southwest, 'southwest')
+                player_attack(p, objects.southwest, 'sw')
             elif key == terminal.TK_1:
                 p.inventory.slots['a'].stored.item.use(p, 'a')
             elif key == terminal.TK_2:
@@ -75,18 +76,19 @@ def player_input(p, gm):
 
 def player_move_or_attack(p, direction):
 
+    '''
     target = None
-    x, y = p.move(direction)
     for obj in p.current_map.objects:
         if obj.fighter and (obj.x == x and obj.y == y):
             target = obj
             break
-    '''
+
     if target is not None:
         p.fighter.attack(target)
 
     else:
     '''
+    x, y = p.move(direction)
     if not p.current_map.is_blocked_at(x, y):
         p.x, p.y = x, y
         # print("Player Position: ({}, {})".format(p.x, p.y))
@@ -97,17 +99,10 @@ def player_move_or_attack(p, direction):
 def player_attack(p, direction, direction_string):
     p.attack = direction_string
     p.attack_direction = direction
-    target = None
     target_x = p.x + direction.goal_x
     target_y = p.y + direction.goal_y
 
-    for obj in p.current_map.objects:
-        if obj.fighter and (obj.x == target_x and obj.y == target_y):
-            target = obj
-            break
-
-    if target is not None:
-        p.fighter.attack(target)
+    p.fighter.swing(p.inventory.weapon, direction_string)
 
 
 def player_death(p):
@@ -117,7 +112,6 @@ def player_death(p):
 
 
 def render(p, gm):
-
     terminal.clear()
     #calculate field of view for all rendering below
     #if map.fov_recompute:
@@ -156,11 +150,16 @@ def render(p, gm):
                 o.draw(p.camera)
 
     if p.attack is not None and p.fighter.power_meter < 20:
+        '''
         target_x = p.x + p.attack_direction.goal_x
         target_y = p.y + p.attack_direction.goal_y
         weapon_x, weapon_y = p.camera.to_camera_coordinates(target_x, target_y)
         # terminal.put(target_x, target_y, attack_animations[p.attack])
-        terminal.put(weapon_x*4, weapon_y*2, 0xE275)
+        '''
+        print(p.inventory.weapon.attack_tiles)
+        for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+            weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x, tgt_y)
+            terminal.put(weapon_x*4, weapon_y*2, 0xE275)
 
     if p.fighter.power_meter >= 20:
         p.attack = None
@@ -225,21 +224,24 @@ def render(p, gm):
     for y in range(0, terminal.TK_HEIGHT-bottom_panel_height):
         terminal.put(right_panel_x, y, 0x2588)
 
-    terminal.puts(right_panel_x + 2, right_panel_y, "Player HP: " +
+    terminal.puts(right_panel_x + 2, right_panel_y, "Name: " +
+                  p.name.capitalize())
+
+    terminal.puts(right_panel_x + 2, right_panel_y + 1, "HP: " +
                   str(p.fighter.hp) + "/" + str(p.fighter.max_hp),
                   right_panel_width, right_panel_height,
                   terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_LEFT)
 
-    terminal.puts(right_panel_x + 2, right_panel_y + 2, "Attack Power")
+    terminal.puts(right_panel_x + 2, right_panel_y + 3, "Attack Power")
 
-    gui.render_bar(right_panel_x + 2, right_panel_y + 3, right_panel_width-4,
+    gui.render_bar(right_panel_x + 2, right_panel_y + 4, right_panel_width-4,
                    'attack power', p.fighter.power_meter, 100,
                    colors.darker_red)
 
-    inventory_x = right_panel_x + 4
-    inventory_y = right_panel_y + 5
+    inventory_x = right_panel_x + 5
+    inventory_y = right_panel_y + 6
 
-    terminal.put(inventory_x, inventory_y, 0xE253)
+    terminal.put(inventory_x, inventory_y, p.inventory.get_item_icon('w'))
     terminal.puts(inventory_x + 4, inventory_y, "Strength: " +
                   str(p.fighter.power))
 
@@ -315,7 +317,7 @@ terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E200: assets/items.png, size=16x16, align=center,
                 resize=32x32""")
-terminal.set("""U+E250: assets/sword.png, size=16x16, align=center,
+terminal.set("""U+E250: assets/weapons.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E275: assets/swordslash.png, size=16x16, align=center,
                 resize=32x32""")
@@ -344,6 +346,19 @@ player.attack_direction = None
 
 inv = objects.Inventory()
 player.inventory = inv
+player.inventory.owner = player
+
+'''
+sword_wpn = objects.Weapon(2, effects.sword_attack)
+sword = objects.GameObject('sword', 0, 0, 0xE251, weapon=sword_wpn)
+inv.slot_weapon.stored = sword
+'''
+
+axe_wpn = objects.Weapon(2, effects.axe_attack)
+axe_item = objects.Item()
+axe = objects.GameObject('axe', 0, 0, 0xE250, item=axe_item, weapon=axe_wpn)
+axe.current_map = dungeon_map
+inv.slot_weapon.stored = axe
 
 player_cam1 = objects.Camera(0, 0, 37, 22)
 player.camera = player_cam1

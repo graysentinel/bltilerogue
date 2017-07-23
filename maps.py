@@ -177,6 +177,13 @@ class DungeonMap:
         torch.light_source.cast_light()
         self.objects.append(torch)
 
+        sword_item = objects.Item()
+        sword_wpn = objects.Weapon(2, effects.sword_attack)
+        sword = objects.GameObject('sword', player.x + 1, player.y + 1, 0xE251,
+                                   item=sword_item, weapon=sword_wpn)
+        sword.current_map = self
+        self.objects.append(sword)
+
         self.assign_object_ids()
 
     def create_h_tunnel(self, x1, x2, y):

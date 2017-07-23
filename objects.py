@@ -6,7 +6,7 @@ import raycast
 
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
-                 light_source=None, item=None):
+                 light_source=None, item=None, weapon=None):
         self.name = name
         self.x = x
         self.y = y
@@ -28,6 +28,10 @@ class GameObject:
         self.item = item
         if self.item:
             self.item.owner = self
+
+        self.weapon = weapon
+        if self.weapon:
+            self.weapon.owner = self
 
         self.object_id = None
 
@@ -132,6 +136,10 @@ southwest = Direction(-1, 1)
 directions = [north, south, east, west, northeast, northwest, southeast,
               southwest]
 
+direction_dict = {'n' : (0, -1), 's': (0, 1), 'e' : (1, 0), 'w' : (-1, 0),
+                  'ne' : (1, -1), 'nw' : (-1, -1), 'se' : (1, 1),
+                  'sw' : (-1, 1)}
+
 
 class Fighter:
     def __init__(self, hp, defense, power, recharge, death_function=None):
@@ -153,20 +161,32 @@ class Fighter:
             if function is not None:
                 function(self.owner)
 
+    def swing(self, weapon, d_key):
+        weapon.attack(self.owner, d_key)
+        attack_tiles = weapon.attack_tiles
+        for obj in self.owner.current_map.objects:
+            if obj.fighter and (obj.x, obj.y) in attack_tiles:
+                self.attack(obj)
+            else:
+                pass
+
+        self.power_meter = 0
+
     def attack(self, target):
         damage = math.floor((self.power * (self.power_meter / 100) -
                   target.fighter.defense))
 
-        if damage > 0:
-            log.message(self.owner.name.capitalize() + ' attacks ' +
-                        target.name + ' for ' + str(damage) + ' hit points!',
-                        colors.orange)
-            target.fighter.take_damage(damage)
-        else:
-            log.message(self.owner.name.capitalize() + ' attacks ' +
-                        target.name + ' but it has no effect!', colors.red)
+        if target is not None:
+            if damage > 0:
+                log.message(self.owner.name.capitalize() + ' attacks ' +
+                            target.name + ' for ' + str(damage) +
+                            ' hit points!', colors.orange)
+                target.fighter.take_damage(damage)
+            else:
+                log.message(self.owner.name.capitalize() + ' attacks ' +
+                            target.name + ' but it has no effect!', colors.red)
 
-        self.power_meter = 0
+        # self.power_meter = 0
 
     def recharge(self):
         if self.power_meter < 100:
@@ -226,18 +246,27 @@ class Inventory:
         self.slot_3 = InventorySlot()
         self.slot_4 = InventorySlot()
         self.slot_5 = InventorySlot()
+        self.slot_weapon = InventorySlot()
 
         self.slots = {'a' : self.slot_1, 'b' : self.slot_2, 'c' : self.slot_3,
-                      'd' : self.slot_4, 'e' : self.slot_5}
+                      'd' : self.slot_4, 'e' : self.slot_5,
+                      'w' : self.slot_weapon}
 
-    def pick_up(self, item):
-        for key, slot in self.slots.items():
-            if slot.stored is None:
-                log.message("You picked up a " + item.name + "!", colors.white)
-                self.slots[key].stored = item
-                self.slots[key].num_stored += 1
-                item.current_map.objects.remove(item)
-                break
+    def pick_up(self, obj):
+        if obj.weapon:
+            self.drop_weapon()
+            self.slot_weapon.stored = obj
+            obj.current_map.objects.remove(obj)
+        else:
+            for key, slot in self.slots.items():
+                if slot.stored is None:
+                    log.message("You picked up a " + obj.name + "!",
+                                colors.white)
+                    self.slots[key].stored = obj
+                    self.slots[key].num_stored += 1
+                    obj.current_map.objects.remove(obj)
+                    break
+
 
     def list_items(self):
         for key, slot in self.slots.items():
@@ -245,6 +274,15 @@ class Inventory:
                 print('Empty')
             else:
                 print(slot.name) + ' (' + str(slot.num_stored) + ')'
+
+    def drop_weapon(self):
+        weapon = self.slot_weapon.stored
+        if weapon is not None:
+            weapon.x = self.owner.x
+            weapon.y = self.owner.y
+            weapon.current_map.objects.append(weapon)
+            weapon.send_to_back()
+            self.slot_weapon.stored = None
 
     def get_item_name(self, key):
         if self.slots[key].stored is None:
@@ -264,6 +302,11 @@ class Inventory:
         if self.slots[key].num_stored == 0:
             self.slots[key].stored = None
 
+    @property
+    def weapon(self):
+        if self.slot_weapon.stored is not None:
+            return self.slot_weapon.stored.weapon
+
 
 class Item:
     def __init__(self, use_function=None):
@@ -276,3 +319,21 @@ class Item:
         else:
             if self.use_function(actor) != 'cancelled':
                 actor.inventory.remove(key)
+
+
+class Weapon:
+    def __init__(self, power, attack_function=None):
+        self.power = power
+        self.attack_function = attack_function
+
+        self.attack_tiles = []
+
+    def attack(self, actor, direction_key):
+        if self.attack_function is None:
+            log.message("This " + self.owner.name + " is useless!",
+                        colors.white)
+        else:
+            if len(self.attack_tiles) > 0:
+                del self.attack_tiles[:]
+
+            self.attack_tiles = self.attack_function(actor, direction_key)
