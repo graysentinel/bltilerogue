@@ -184,6 +184,17 @@ class DungeonMap:
         sword.current_map = self
         self.objects.append(sword)
 
+        bow_item = objects.Item()
+        bow_wpn = objects.Weapon(2, effects.bow_attack, ranged=True, radius=5,
+                                 ammo_icons={'n' : 0xE350, 's' : 0xE351,
+                                             'w' : 0xE352, 'e' : 0xE353,
+                                             'ne' : 0xE354, 'nw' : 0xE355,
+                                             'se' : 0xE356, 'sw' : 0xE357})
+        bow = objects.GameObject('bow', player.x - 1, player.y - 1, 0xE252,
+                                 item=bow_item, weapon=bow_wpn)
+        bow.current_map = self
+        self.objects.append(bow)
+
         self.assign_object_ids()
 
     def create_h_tunnel(self, x1, x2, y):

@@ -12,18 +12,16 @@ def cast_heal(target):
         target.fighter.heal(5)
 
 
-def sword_attack(actor, d_key):
+def sword_attack(source_x, source_y, d_key):
     target_tiles = []
     dx, dy = objects.direction_dict[d_key]
-    target_x = actor.x + dx
-    target_y = actor.y + dy
+    target_x = source_x + dx
+    target_y = source_y + dy
     target_tiles.append((target_x, target_y))
-    print(target_tiles)
-
     return target_tiles
 
 
-def axe_attack(actor, d_key):
+def axe_attack(source_x, source_y, d_key):
     target_tiles = []
     if d_key == 'n':
         dx1, dy1 = objects.direction_dict['n']
@@ -58,8 +56,14 @@ def axe_attack(actor, d_key):
         dx2, dy2 = objects.direction_dict['nw']
         dx3, dy3 = objects.direction_dict['n']
 
-    target_tiles.append((actor.x + dx1, actor.y + dy1))
-    target_tiles.append((actor.x + dx2, actor.y + dy2))
-    target_tiles.append((actor.x + dx3, actor.y + dy3))
+    target_tiles.append((source_x + dx1, source_y + dy1))
+    target_tiles.append((source_x + dx2, source_y + dy2))
+    target_tiles.append((source_x + dx3, source_y + dy3))
+    return target_tiles
 
+
+def bow_attack(source_x, source_y, d_key):
+    target_tiles = []
+    dx, dy = objects.direction_dict[d_key]
+    target_tiles.append((source_x + dx, source_y + dy))
     return target_tiles

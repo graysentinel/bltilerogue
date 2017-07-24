@@ -172,6 +172,17 @@ class Fighter:
 
         self.power_meter = 0
 
+    def shoot(self, weapon, d_key):
+        weapon.ranged_attack(self.owner, d_key)
+        attack_tiles = weapon.attack_tiles
+        for obj in self.owner.current_map.objects:
+            if obj.fighter and (obj.x, obj.y) in attack_tiles:
+                self.attack(obj)
+            else:
+                pass
+
+        self.power_meter = 0
+
     def attack(self, target):
         damage = math.floor((self.power * (self.power_meter / 100) -
                   target.fighter.defense))
@@ -322,9 +333,13 @@ class Item:
 
 
 class Weapon:
-    def __init__(self, power, attack_function=None):
+    def __init__(self, power, attack_function=None, ranged=False, radius=0,
+                 ammo_icons={}):
         self.power = power
         self.attack_function = attack_function
+        self.ranged = ranged
+        self.radius = radius
+        self.ammo_icons = ammo_icons
 
         self.attack_tiles = []
 
@@ -336,4 +351,27 @@ class Weapon:
             if len(self.attack_tiles) > 0:
                 del self.attack_tiles[:]
 
-            self.attack_tiles = self.attack_function(actor, direction_key)
+            self.attack_tiles = self.attack_function(actor.x, actor.y,
+                                                     direction_key)
+
+    def ranged_attack(self, actor, direction_key):
+        source_x = actor.x
+        source_y = actor.y
+        if self.ranged:
+            self.used = True
+            i = 0
+            while i < self.radius:
+                if len(self.attack_tiles) > 0:
+                    del self.attack_tiles[:]
+                self.attack_tiles = self.attack_function(source_x, source_y,
+                                                         direction_key)
+                print(self.attack_tiles)
+                dx, dy = direction_dict[direction_key]
+                if actor.current_map.is_blocked_at(source_x + dx,
+                                                   source_y + dy):
+                    break
+                else:
+                    source_x += dx
+                    source_y += dy
+                    i += 1
+                    print(i)

@@ -102,7 +102,10 @@ def player_attack(p, direction, direction_string):
     target_x = p.x + direction.goal_x
     target_y = p.y + direction.goal_y
 
-    p.fighter.swing(p.inventory.weapon, direction_string)
+    if p.inventory.weapon.ranged:
+        p.fighter.shoot(p.inventory.weapon, direction_string)
+    else:
+        p.fighter.swing(p.inventory.weapon, direction_string)
 
 
 def player_death(p):
@@ -149,17 +152,21 @@ def render(p, gm):
             if (o.x, o.y) in visible_tiles:
                 o.draw(p.camera)
 
-    if p.attack is not None and p.fighter.power_meter < 20:
-        '''
-        target_x = p.x + p.attack_direction.goal_x
-        target_y = p.y + p.attack_direction.goal_y
-        weapon_x, weapon_y = p.camera.to_camera_coordinates(target_x, target_y)
-        # terminal.put(target_x, target_y, attack_animations[p.attack])
-        '''
-        print(p.inventory.weapon.attack_tiles)
-        for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
-            weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x, tgt_y)
-            terminal.put(weapon_x*4, weapon_y*2, 0xE275)
+    if not p.inventory.weapon.ranged:
+        if p.attack is not None and p.fighter.power_meter < 20:
+            print('Melee')
+            for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+                weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
+                                                                    tgt_y)
+                terminal.put(weapon_x*4, weapon_y*2, 0xE275)
+    else:
+        if p.attack is not None and p.fighter.power_meter < 20:
+            print('Ranged')
+            for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+                weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
+                                                                    tgt_y)
+                terminal.put(weapon_x*4, weapon_y*2,
+                             p.inventory.weapon.ammo_icons[p.attack])
 
     if p.fighter.power_meter >= 20:
         p.attack = None
@@ -322,6 +329,8 @@ terminal.set("""U+E250: assets/weapons.png, size=16x16, align=center,
 terminal.set("""U+E275: assets/swordslash.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E300: assets/armor.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E350: assets/arrows.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 terminal.composition(True)
