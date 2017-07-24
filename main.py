@@ -6,6 +6,8 @@ import gui
 import colors
 import log
 import effects
+import raycast
+import math
 
 attack_animations = {'west' : 0xE250, 'northwest' : 0xE251,
                      'north' : 0xE252, 'northeast' : 0xE253, 'east': 0xE254,
@@ -160,13 +162,15 @@ def render(p, gm):
                                                                     tgt_y)
                 terminal.put(weapon_x*4, weapon_y*2, 0xE275)
     else:
-        if p.attack is not None and p.fighter.power_meter < 20:
+        if p.attack is not None:
             print('Ranged')
-            for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
-                weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
-                                                                    tgt_y)
-                terminal.put(weapon_x*4, weapon_y*2,
-                             p.inventory.weapon.ammo_icons[p.attack])
+            a = raycast.sin_cos_directions[p.attack]
+            if p.fighter.power_meter < 20:
+                for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+                    weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
+                                                                        tgt_y)
+                    terminal.put(weapon_x*4, weapon_y*2,
+                                 p.inventory.weapon.ammo_icons[p.attack])
 
     if p.fighter.power_meter >= 20:
         p.attack = None
