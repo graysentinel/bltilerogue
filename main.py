@@ -62,6 +62,8 @@ def player_input(p, gm):
                 player_attack(p, objects.south, 's')
             elif key == terminal.TK_KP_1:
                 player_attack(p, objects.southwest, 'sw')
+            elif key == terminal.TK_KP_5:
+                p.inventory.switch_active()
             elif key == terminal.TK_1:
                 p.inventory.slots['a'].stored.item.use(p, 'a')
             elif key == terminal.TK_2:
@@ -72,6 +74,9 @@ def player_input(p, gm):
                 p.inventory.slots['d'].stored.item.use(p, 'd')
             elif key == terminal.TK_5:
                 p.inventory.slots['e'].stored.item.use(p, 'e')
+            elif key == terminal.TK_L:
+                log.message('Lightning bolt!', colors.light_blue)
+                effects.lightning_bolt(p)
             else:
                 return 'no-turn'
 
@@ -101,13 +106,16 @@ def player_move_or_attack(p, direction):
 def player_attack(p, direction, direction_string):
     p.attack = direction_string
     p.attack_direction = direction
-    target_x = p.x + direction.goal_x
-    target_y = p.y + direction.goal_y
 
-    if p.inventory.weapon.ranged:
-        p.fighter.shoot(p.inventory.weapon, direction_string)
+    if p.inventory.slot_weapon.active:
+        if p.inventory.weapon.ranged:
+            p.fighter.shoot(p.inventory.weapon, direction_string)
+        else:
+            p.fighter.swing(p.inventory.weapon, direction_string)
     else:
-        p.fighter.swing(p.inventory.weapon, direction_string)
+        p.fighter.power_meter = 0
+        p.inventory.spell.cast(p, direction_string)
+        p.inventory.remove('s')
 
 
 def player_death(p):
@@ -127,6 +135,8 @@ def render(p, gm):
                                      fov=p.fov_algo,
                                      radius=p.sight_radius,
                                      lightWalls=p.fov_light_walls)
+
+    player.visible = visible_tiles
 
     max_visible = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
                                    fov=p.fov_algo, radius=10,
@@ -156,23 +166,23 @@ def render(p, gm):
 
     if not p.inventory.weapon.ranged:
         if p.attack is not None and p.fighter.power_meter < 20:
-            print('Melee Attack')
+            # print('Melee Attack')
             for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
                 weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
                                                                     tgt_y)
                 terminal.put(weapon_x*4, weapon_y*2, 0xE275)
     else:
         if p.attack is not None:
-            print('Ranged Attack')
-            '''
-            a = raycast.sin_cos_directions[p.attack]
-            if p.fighter.power_meter < 100:
-                for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
-                    weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
-                                                                        tgt_y)
-                    terminal.put(weapon_x*4, weapon_y*2,
-                                 p.inventory.weapon.ammo_icons[p.attack])
-            '''
+            pass
+
+    for effect in p.current_map.effects:
+        if effect.active:
+            for ex, ey, hit in effect.aoe:
+                ex2, ey2 = p.camera.to_camera_coordinates(ex, ey)
+                if hit:
+                    terminal.put(ex2*4, ey2*2, effect.icons['hit'])
+                else:
+                    terminal.put(ex2*4, ey2*2, effect.icons[p.attack])
 
     if p.fighter.power_meter >= 20:
         p.attack = None
@@ -254,14 +264,32 @@ def render(p, gm):
     inventory_x = right_panel_x + 5
     inventory_y = right_panel_y + 6
 
-    terminal.put(inventory_x, inventory_y, p.inventory.get_item_icon('w'))
-    terminal.puts(inventory_x + 4, inventory_y, "Strength: " +
+    # Current Weapon
+    if p.inventory.slots['w'].active:
+        gui.highlight_box(inventory_x, inventory_y, p.inventory, 'w',
+                          colors.yellow)
+    else:
+        gui.highlight_box(inventory_x, inventory_y, p.inventory, 'w',
+                          colors.black)
+    terminal.puts(inventory_x + 6, inventory_y + 1, "Strength: " +
                   str(p.fighter.power))
 
-    terminal.put(inventory_x, inventory_y + 2, 0xE300)
-    terminal.puts(inventory_x + 4, inventory_y + 2, "Defense: " +
+    # Equipped Spell
+    if p.inventory.slots['s'].active:
+        gui.highlight_box(inventory_x, inventory_y + 3, p.inventory, 's',
+                          colors.yellow)
+    else:
+        gui.highlight_box(inventory_x, inventory_y + 3, p.inventory, 's',
+                          colors.black)
+    terminal.puts(inventory_x + 6, inventory_y + 4,
+                  p.inventory.get_item_name('s'))
+
+    # Defense Icon
+    terminal.put(inventory_x + 2, inventory_y + 7, 0xE300)
+    terminal.puts(inventory_x + 6, inventory_y + 7, "Defense: " +
                   str(p.fighter.defense))
 
+    # Belt Slots
     terminal.puts(right_panel_x + 2, right_panel_y + 26, "1")
     gui.render_box(right_panel_x + 4, right_panel_y + 25,
                    p.inventory, 'a')
@@ -338,6 +366,10 @@ terminal.set("""U+E300: assets/armor.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E350: assets/arrows.png, size=16x16, align=center,
                 resize=32x32""")
+terminal.set("""U+E360: assets/spellbooks.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
+                resize=32x32""")
 terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
 terminal.composition(True)
 
@@ -408,6 +440,10 @@ while True:
     for obj in dungeon_map.objects:
         if obj.active:
             obj.update()
+
+    for effect in dungeon_map.effects:
+        if effect.active:
+            effect.update()
 
     player.action = player_input(player, game)
     if player.action == 'exit':

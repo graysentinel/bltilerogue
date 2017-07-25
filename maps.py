@@ -88,6 +88,7 @@ class DungeonMap:
         self.width = width
         self.height = height
         self.objects = []
+        self.effects = []
         self.tiles = [[ 0 for y in range(self.height * 2) ]
                         for x in range(self.width * 4) ]
         self.tiles_explored = [[ 0 for y in range(self.height * 2) ]
@@ -197,6 +198,23 @@ class DungeonMap:
         bow.current_map = self
         self.objects.append(bow)
 
+        lb_item = objects.Item()
+        lb_spell = objects.SpellEffect(spell_range=5, damage=15,
+                                       render_frames=3,
+                                       icons={'n' : 0xE370, 's' : 0xE370,
+                                              'w' : 0XE371, 'e' : 0xE371,
+                                              'ne' : 0xE372, 'sw': 0xE372,
+                                              'nw' : 0xE373, 'se' : 0xE373,
+                                              'hit' : 0xE374},
+                                       charges=5,
+                                       aoe_function=effects.lightning_bolt)
+        lb_book = objects.GameObject('Lightning Bolt', player.x + 2,
+                                     player.y + 2, 0xE360, item=lb_item,
+                                     spell=lb_spell, active=False,
+                                     update_func=objects.update_spell)
+        lb_book.current_map = self
+        self.objects.append(lb_book)
+
         self.assign_object_ids()
 
     def create_h_tunnel(self, x1, x2, y):
@@ -227,6 +245,13 @@ class DungeonMap:
                 for obj in self.objects:
                     if obj.blocks and obj.x == x and obj.y == y:
                         return True
+
+        return False
+
+    def terrain_blocked_at(self, x, y):
+        for t in terrain_types:
+            if self.tiles[x][y] == t.terrain_id:
+                return t.blocks
 
         return False
 

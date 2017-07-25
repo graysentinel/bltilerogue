@@ -21,13 +21,15 @@ def update_player(player):
 def update_ammo(ammo):
     ammo.projectile.update()
 
+def update_spell(spellbook):
+    spellbook.spell.update()
 
 ''' Classes and Data Structures '''
 
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
                  light_source=None, item=None, weapon=None, projectile=None,
-                 update_func=update_default, active=True):
+                 spell=None, update_func=update_default, active=True):
         self.name = name
         self.x = x
         self.y = y
@@ -57,6 +59,10 @@ class GameObject:
         self.projectile = projectile
         if self.projectile:
             self.projectile.owner = self
+
+        self.spell = spell
+        if self.spell:
+            self.spell.owner = self
 
         self.update_func = update_func
         self.active = active
@@ -170,6 +176,11 @@ directions = [north, south, east, west, northeast, northwest, southeast,
 direction_dict = {'n' : (0, -1), 's': (0, 1), 'e' : (1, 0), 'w' : (-1, 0),
                   'ne' : (1, -1), 'nw' : (-1, -1), 'se' : (1, 1),
                   'sw' : (-1, 1)}
+
+keypad_to_directions = {terminal.TK_KP_1 : 'sw', terminal.TK_KP_2 : 's',
+                        terminal.TK_KP_3 : 'se', terminal.TK_KP_4 : 'w',
+                        terminal.TK_KP_6 : 'e', terminal.TK_KP_7 : 'nw',
+                        terminal.TK_KP_8 : 'n', terminal.TK_KP_9 : 'ne'}
 
 def invert_direction(dx, dy):
     return dx * -1, dy * -1
@@ -296,7 +307,8 @@ class LightSource:
 
 
 class InventorySlot:
-    def __init__(self):
+    def __init__(self, active=False):
+        self.active = active
         self.stored = None
         self.num_stored = 0
 
@@ -308,16 +320,22 @@ class Inventory:
         self.slot_3 = InventorySlot()
         self.slot_4 = InventorySlot()
         self.slot_5 = InventorySlot()
-        self.slot_weapon = InventorySlot()
+        self.slot_weapon = InventorySlot(active=True)
+        self.slot_spell = InventorySlot()
 
         self.slots = {'a' : self.slot_1, 'b' : self.slot_2, 'c' : self.slot_3,
                       'd' : self.slot_4, 'e' : self.slot_5,
-                      'w' : self.slot_weapon}
+                      's' : self.slot_spell, 'w' : self.slot_weapon}
 
     def pick_up(self, obj):
         if obj.weapon:
-            self.drop_weapon()
+            self.drop('w')
             self.slot_weapon.stored = obj
+            obj.current_map.objects.remove(obj)
+        elif obj.spell:
+            self.drop('s')
+            self.slot_spell.stored = obj
+            self.slot_spell.num_stored = obj.spell.charges
             obj.current_map.objects.remove(obj)
         else:
             for key, slot in self.slots.items():
@@ -337,14 +355,14 @@ class Inventory:
             else:
                 print(slot.name) + ' (' + str(slot.num_stored) + ')'
 
-    def drop_weapon(self):
-        weapon = self.slot_weapon.stored
-        if weapon is not None:
-            weapon.x = self.owner.x
-            weapon.y = self.owner.y
-            weapon.current_map.objects.append(weapon)
-            weapon.send_to_back()
-            self.slot_weapon.stored = None
+    def drop(self, key):
+        item = self.slots[key].stored
+        if item is not None:
+            item.x = self.owner.x
+            item.y = self.owner.y
+            item.current_map.objects.append(item)
+            item.send_to_back()
+            self.slots[key].stored = None
 
     def get_item_name(self, key):
         if self.slots[key].stored is None:
@@ -364,10 +382,23 @@ class Inventory:
         if self.slots[key].num_stored == 0:
             self.slots[key].stored = None
 
+    def switch_active(self):
+        if self.slot_weapon.active:
+            self.slot_weapon.active = False
+            self.slot_spell.active = True
+        elif self.slot_spell.active:
+            self.slot_spell.active = False
+            self.slot_weapon.active = True
+
     @property
     def weapon(self):
         if self.slot_weapon.stored is not None:
             return self.slot_weapon.stored.weapon
+
+    @property
+    def spell(self):
+        if self.slot_spell.stored is not None:
+            return self.slot_spell.stored.spell
 
 
 class Item:
@@ -431,7 +462,7 @@ class Projectile:
         self.collision = False
 
         self.frames = 0
-        self.delay = 5
+        self.delay = 3
 
     def check_collision(self):
         if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
@@ -453,6 +484,9 @@ class Projectile:
                     ' for ' + str(self.power) + ' damage!', colors.orange)
         target.fighter.take_damage(damage)
 
+    def move(self):
+        self.owner.x += self.dx
+        self.owner.y += self.dy
 
     def update(self):
         self.frames += 1
@@ -460,11 +494,38 @@ class Projectile:
             if self.range_counter < self.range:
                 self.check_collision()
                 if not self.collision:
-                    self.owner.x += self.dx
-                    self.owner.y += self.dy
+                    self.move()
                     self.range_counter += 1
                     self.frames = 0
                 else:
                     self.cleanup()
             else:
                 self.cleanup()
+
+
+class SpellEffect:
+    def __init__(self, spell_range, damage, render_frames, icons, charges,
+                 aoe_function=None):
+        self.range = spell_range
+        self.damage = damage
+        self.render_frames = render_frames
+        self.icons = icons
+        self.charges = charges
+        self.aoe_function = aoe_function
+        self.aoe = None
+        self.active = False
+        self.frames = 0
+
+    def cast(self, source, d_key):
+        self.aoe = self.aoe_function(source, self.range, d_key)
+        source.current_map.effects.append(self)
+        self.active = True
+        for obj in source.current_map.objects:
+            if obj.fighter and (obj.x, obj.y, True) in self.aoe:
+                obj.fighter.take_damage(self.damage)
+
+    def update(self):
+        self.frames += 1
+        if self.frames == self.render_frames:
+            self.active = False
+            self.frames = 0

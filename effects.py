@@ -1,6 +1,8 @@
 import log
 import colors
 import objects
+from tcod import libtcodpy as tcod
+from bearlibterminal import terminal
 
 def cast_heal(target):
     if target.fighter.hp >= target.fighter.max_hp:
@@ -66,3 +68,36 @@ def bow_attack(source, range, d_key, damage):
     dx, dy = objects.direction_dict[d_key]
     proj = objects.Projectile(dx, dy, damage, range)
     return proj
+
+
+def closest_monster(source, range):
+    closest_enemy = None
+    closest_dist = range + 1
+
+    for obj in source.current_map.objects:
+        if obj.fighter and obj.ai and (obj.x, obj.y) in source.visible:
+            dist = source.distance_to(obj)
+            if dist < closest_dist:
+                closest_enemy = obj
+                closest_dist = dist
+
+    return closest_enemy
+
+
+def lightning_bolt(source, spell_range, d_key):
+
+    dx, dy = objects.direction_dict[d_key]
+    affected_tiles = []
+    for i in range(1, spell_range + 1):
+        tx = source.x + (dx * i)
+        ty = source.y + (dy * i)
+        if source.current_map.terrain_blocked_at(tx, ty):
+            affected_tiles.append((tx, ty, True))
+            break
+        else:
+            if source.current_map.is_blocked_at(tx, ty):
+                affected_tiles.append((tx, ty, True))
+            else:
+                affected_tiles.append((tx, ty, False))
+
+    return affected_tiles
