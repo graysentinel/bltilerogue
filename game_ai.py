@@ -73,8 +73,12 @@ class BasicMonster:
         monster.blocks = False
         monster.fighter = None
         monster.ai = None
+        monster.active = False
         monster.name = 'Remains of ' + monster.name
         monster.send_to_back()
+
+    def update(self):
+        self.take_turn()
 
 
 

@@ -4,9 +4,30 @@ import log
 import colors
 import raycast
 
+
+''' Update Functions '''
+
+def update_default(obj):
+    pass
+
+def update_monster(monster):
+    monster.ai.update()
+    monster.fighter.update()
+
+def update_player(player):
+    player.fighter.update()
+    # player.inventory.weapon.update()
+
+def update_ammo(ammo):
+    ammo.projectile.update()
+
+
+''' Classes and Data Structures '''
+
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
-                 light_source=None, item=None, weapon=None):
+                 light_source=None, item=None, weapon=None, projectile=None,
+                 update_func=update_default, active=True):
         self.name = name
         self.x = x
         self.y = y
@@ -32,6 +53,13 @@ class GameObject:
         self.weapon = weapon
         if self.weapon:
             self.weapon.owner = self
+
+        self.projectile = projectile
+        if self.projectile:
+            self.projectile.owner = self
+
+        self.update_func = update_func
+        self.active = active
 
         self.object_id = None
 
@@ -72,6 +100,9 @@ class GameObject:
     def send_to_back(self):
         self.current_map.objects.remove(self)
         self.current_map.objects.insert(0, self)
+
+    def update(self):
+        self.update_func(self)
 
     @property
     def current_position(self):
@@ -154,6 +185,11 @@ class Fighter:
         self.death_function = death_function
 
         self.power_meter = 100
+        self.shooting = False
+        self.weapon = None
+        self.d_key = ''
+        self.frames = 0
+        self.attack_delay = 5
 
     def take_damage(self, damage):
         if damage > 0:
@@ -165,7 +201,7 @@ class Fighter:
                 function(self.owner)
 
     def swing(self, weapon, d_key):
-        weapon.attack(self.owner, d_key)
+        weapon.attack(self.owner.x, self.owner.y, d_key)
         attack_tiles = weapon.attack_tiles
         for obj in self.owner.current_map.objects:
             if obj.fighter and (obj.x, obj.y) in attack_tiles:
@@ -176,15 +212,20 @@ class Fighter:
         self.power_meter = 0
 
     def shoot(self, weapon, d_key):
-        weapon.ranged_attack(self.owner, d_key)
-        attack_tiles = weapon.attack_tiles
-        for obj in self.owner.current_map.objects:
-            if obj.fighter and (obj.x, obj.y) in attack_tiles:
-                self.attack(obj)
-            else:
-                pass
-
+        damage = math.floor(self.power * (self.power_meter / 100))
+        weapon.ranged_attack(self.owner, d_key, damage)
         self.power_meter = 0
+        '''
+        attack_tiles = weapon.attack_tiles
+        if len(attack_tiles) == 0:
+            self.deactivate_bow()
+        else:
+            for obj in self.owner.current_map.objects:
+                if obj.fighter and (obj.x, obj.y) in attack_tiles:
+                    self.attack(obj)
+                else:
+                    pass
+        '''
 
     def attack(self, target):
         damage = math.floor((self.power * (self.power_meter / 100) -
@@ -201,6 +242,13 @@ class Fighter:
                             target.name + ' but it has no effect!', colors.red)
 
         # self.power_meter = 0
+
+    def update(self):
+        self.recharge()
+        if self.shooting:
+            if self.frames == self.attack_delay:
+                self.shoot(self.weapon)
+                self.frames = 0
 
     def recharge(self):
         if self.power_meter < 100:
@@ -337,44 +385,86 @@ class Item:
 
 class Weapon:
     def __init__(self, power, attack_function=None, ranged=False, radius=0,
-                 ammo_icons={}):
+                 ammo_icons={}, ammo_name=''):
         self.power = power
         self.attack_function = attack_function
         self.ranged = ranged
         self.radius = radius
         self.ammo_icons = ammo_icons
+        self.ammo_name = ammo_name
 
         self.attack_tiles = []
 
-    def attack(self, actor, direction_key):
+    def attack(self, source_x, source_y, direction_key):
         if self.attack_function is None:
             log.message("This " + self.owner.name + " is useless!",
                         colors.white)
         else:
+            self.source_x = source_x
+            self.source_y = source_y
+            self.direction_key = direction_key
             if len(self.attack_tiles) > 0:
                 del self.attack_tiles[:]
 
-            self.attack_tiles = self.attack_function(actor.x, actor.y,
-                                                     direction_key)
+            self.attack_tiles = self.attack_function(source_x, source_y,
+                                                     self.direction_key)
 
-    def ranged_attack(self, actor, direction_key):
-        source_x = actor.x
-        source_y = actor.y
-        if self.ranged:
-            self.used = True
-            i = 0
-            while i < self.radius:
-                if len(self.attack_tiles) > 0:
-                    del self.attack_tiles[:]
-                self.attack_tiles = self.attack_function(source_x, source_y,
-                                                         direction_key)
-                print(self.attack_tiles)
-                dx, dy = direction_dict[direction_key]
-                if actor.current_map.is_blocked_at(source_x + dx,
-                                                   source_y + dy):
-                    break
+    def ranged_attack(self, source, direction_key, damage):
+
+        proj = self.attack_function(source, self.radius, direction_key, damage)
+        dx, dy = direction_dict[direction_key]
+        fired_shot = GameObject(self.ammo_name, source.x+dx, source.y+dy,
+                                self.ammo_icons[direction_key],
+                                update_func=update_ammo,
+                                projectile=proj)
+        fired_shot.current_map = source.current_map
+        source.current_map.objects.append(fired_shot)
+
+
+class Projectile:
+    def __init__(self, dx, dy, power, weapon_range):
+        self.dx = dx
+        self.dy = dy
+        self.power = power
+        self.range = weapon_range
+        self.range_counter = 0
+        self.collision = False
+
+        self.frames = 0
+        self.delay = 5
+
+    def check_collision(self):
+        if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
+            for obj in self.owner.current_map.objects:
+                if obj.fighter and (obj.x == self.owner.x and
+                                    obj.y == self.owner.y):
+                    self.hit(obj)
+                    self.collision = True
                 else:
-                    source_x += dx
-                    source_y += dy
-                    i += 1
-                    print(i)
+                    self.collision = True
+
+    def cleanup(self):
+        self.owner.active = False
+        self.owner.current_map.objects.remove(self.owner)
+
+    def hit(self, target):
+        damage = self.power - target.fighter.defense
+        log.message('The ' + target.name + ' is hit by the ' + self.owner.name +
+                    ' for ' + str(self.power) + ' damage!', colors.orange)
+        target.fighter.take_damage(damage)
+
+
+    def update(self):
+        self.frames += 1
+        if self.frames == self.delay:
+            if self.range_counter < self.range:
+                self.check_collision()
+                if not self.collision:
+                    self.owner.x += self.dx
+                    self.owner.y += self.dy
+                    self.range_counter += 1
+                    self.frames = 0
+                else:
+                    self.cleanup()
+            else:
+                self.cleanup()

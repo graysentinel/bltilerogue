@@ -62,8 +62,7 @@ def axe_attack(source_x, source_y, d_key):
     return target_tiles
 
 
-def bow_attack(source_x, source_y, d_key):
-    target_tiles = []
+def bow_attack(source, range, d_key, damage):
     dx, dy = objects.direction_dict[d_key]
-    target_tiles.append((source_x + dx, source_y + dy))
-    return target_tiles
+    proj = objects.Projectile(dx, dy, damage, range)
+    return proj

@@ -172,7 +172,7 @@ class DungeonMap:
         print(torch_x, torch_y)
         torchlight = objects.LightSource(radius=2, color=colors.lighter_yellow)
         torch = objects.GameObject('torch', torch_x, torch_y, 0xE200,
-                                   light_source=torchlight)
+                                   light_source=torchlight, active=False)
         torch.current_map = self
         torch.light_source.cast_light()
         self.objects.append(torch)
@@ -180,7 +180,8 @@ class DungeonMap:
         sword_item = objects.Item()
         sword_wpn = objects.Weapon(2, effects.sword_attack)
         sword = objects.GameObject('sword', player.x + 1, player.y + 1, 0xE251,
-                                   item=sword_item, weapon=sword_wpn)
+                                   item=sword_item, weapon=sword_wpn,
+                                   active=False)
         sword.current_map = self
         self.objects.append(sword)
 
@@ -189,9 +190,10 @@ class DungeonMap:
                                  ammo_icons={'n' : 0xE350, 's' : 0xE351,
                                              'w' : 0xE352, 'e' : 0xE353,
                                              'ne' : 0xE354, 'nw' : 0xE355,
-                                             'se' : 0xE356, 'sw' : 0xE357})
+                                             'se' : 0xE356, 'sw' : 0xE357},
+                                 ammo_name='arrow')
         bow = objects.GameObject('bow', player.x - 1, player.y - 1, 0xE252,
-                                 item=bow_item, weapon=bow_wpn)
+                                 item=bow_item, weapon=bow_wpn, active=False)
         bow.current_map = self
         self.objects.append(bow)
 
@@ -274,7 +276,8 @@ class DungeonMap:
                     monster = objects.GameObject('orc', x, y,
                                                  0xE101, blocks=True,
                                                  fighter=monster_fighter,
-                                                 ai=ai_component)
+                                                 ai=ai_component,
+                                             update_func=objects.update_monster)
                 else:
                     ai_component = game_ai.BasicMonster(30)
                     monster_fighter = objects.Fighter(hp=16, defense=1, power=4,
@@ -283,7 +286,8 @@ class DungeonMap:
                     monster = objects.GameObject('troll', x, y, 0xE100,
                                                   blocks=True,
                                                   fighter=monster_fighter,
-                                                  ai=ai_component)
+                                                  ai=ai_component,
+                                             update_func=objects.update_monster)
 
                 monster.current_map = self
                 self.objects.append(monster)
@@ -297,7 +301,7 @@ class DungeonMap:
             if not self.is_blocked_at(x, y):
                 item_component = objects.Item(use_function=effects.cast_heal)
                 item = objects.GameObject('healing potion', x, y, 0xE201,
-                                          item=item_component)
+                                          item=item_component, active=False)
 
                 self.objects.append(item)
                 item.current_map = self

@@ -156,21 +156,23 @@ def render(p, gm):
 
     if not p.inventory.weapon.ranged:
         if p.attack is not None and p.fighter.power_meter < 20:
-            print('Melee')
+            print('Melee Attack')
             for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
                 weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
                                                                     tgt_y)
                 terminal.put(weapon_x*4, weapon_y*2, 0xE275)
     else:
         if p.attack is not None:
-            print('Ranged')
+            print('Ranged Attack')
+            '''
             a = raycast.sin_cos_directions[p.attack]
-            if p.fighter.power_meter < 20:
+            if p.fighter.power_meter < 100:
                 for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
                     weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
                                                                         tgt_y)
                     terminal.put(weapon_x*4, weapon_y*2,
                                  p.inventory.weapon.ammo_icons[p.attack])
+            '''
 
     if p.fighter.power_meter >= 20:
         p.attack = None
@@ -342,7 +344,8 @@ terminal.composition(True)
 # Initialize Game
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
-player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter)
+player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter,
+                            update_func=objects.update_player)
 dungeon_map = maps.DungeonMap(50, 50)
 dungeon_map.make_map(player)
 dungeon_map.objects.append(player)
@@ -369,7 +372,8 @@ inv.slot_weapon.stored = sword
 
 axe_wpn = objects.Weapon(2, effects.axe_attack)
 axe_item = objects.Item()
-axe = objects.GameObject('axe', 0, 0, 0xE250, item=axe_item, weapon=axe_wpn)
+axe = objects.GameObject('axe', 0, 0, 0xE250, item=axe_item, weapon=axe_wpn,
+                         active=False)
 axe.current_map = dungeon_map
 inv.slot_weapon.stored = axe
 
@@ -393,11 +397,17 @@ while True:
     for o in dungeon_map.objects:
         o.clear(player.camera)
 
+    '''
     for obj in dungeon_map.objects:
         if obj.ai:
             obj.ai.take_turn()
         if obj.fighter:
             obj.fighter.recharge()
+    '''
+
+    for obj in dungeon_map.objects:
+        if obj.active:
+            obj.update()
 
     player.action = player_input(player, game)
     if player.action == 'exit':
