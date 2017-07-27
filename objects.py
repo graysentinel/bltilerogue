@@ -32,6 +32,23 @@ def update_spell_projectile(spell):
 
 ''' Classes and Data Structures '''
 
+class Window:
+    def __init__(self, x, y, w, h):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+
+        self.x2 = self.x + self.w*4
+        self.y2 = self.y + self.h*2
+
+    def contains(self, x, y):
+        if x > self.x and y > self.y and x < self.x2 and y < self.y2:
+            return True
+        else:
+            return False
+
+
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
                  light_source=None, item=None, weapon=None, projectile=None,
@@ -116,6 +133,26 @@ class GameObject:
     def update(self):
         self.update_func(self)
 
+    def get_direction(self, x, y):
+        if x > self.x and y > self.y:
+            return 'se'
+        elif x > self.x and y == self.y:
+            return 'e'
+        elif x < self.x and y == self.y:
+            return 'w'
+        elif x < self.x and y < self.y:
+            return 'nw'
+        elif x == self.x and y < self.y:
+            return 'n'
+        elif x == self.x and y > self.y:
+            return 's'
+        elif x < self.x and y > self.y:
+            return 'sw'
+        elif x > self.x and y < self.y:
+            return 'ne'
+        elif x == self.x and y == self.y:
+            return 'none'
+
     @property
     def current_position(self):
         return "(" + str(self.x) + "," + str(self.y) + ")"
@@ -145,7 +182,7 @@ class Camera:
         x2 = self.x + self.width
         y2 = self.y + self.height
 
-        if x in range(self.x, self.x) and y in range(self.y, self.y2):
+        if x in range(self.x, self.x2) and y in range(self.y, self.y2):
             return True
 
         return False
@@ -350,6 +387,12 @@ class Inventory:
 
         log.message("You picked up a " + obj.name + "!", colors.white)
 
+    def use_item(self, actor, key):
+        if self.slots[key].stored is not None:
+            if self.slots[key].stored.item.use(actor) != 'cancelled':
+                self.remove(key)
+        else:
+            log.message('That inventory slot is empty!', colors.yellow)
 
     def list_items(self):
         for key, slot in self.slots.items():
@@ -418,13 +461,12 @@ class Item:
     def __init__(self, use_function=None):
         self.use_function = use_function
 
-    def use(self, actor, key):
+    def use(self, actor):
         if self.use_function is None:
             log.message("The " + self.owner.name + " can't be used.",
                         colors.white)
         else:
-            if self.use_function(actor) != 'cancelled':
-                actor.inventory.remove(key)
+            return self.use_function(actor)
 
 
 class Weapon:
@@ -547,6 +589,7 @@ class SpellEffect:
         self.aoe = None
         self.active = False
         self.frames = 0
+
 
     def cast(self, source, d_key):
         aoe = self.aoe_function(source, self.range, d_key)

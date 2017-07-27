@@ -13,6 +13,7 @@ def cast_heal(target):
     else:
         log.message('Your wounds begin to mend.', colors.red)
         target.fighter.heal(5)
+        return 'used'
 
 
 def sword_attack(source_x, source_y, d_key):

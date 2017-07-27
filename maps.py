@@ -98,6 +98,9 @@ class DungeonMap:
         self.max_rooms = 30
         self.max_room_monsters = 3
 
+        self.timer = 0
+        self.cleanup_time = 100
+
         self.max_room_items = 2
 
         self.rooms = []
@@ -358,6 +361,16 @@ class DungeonMap:
             if obj.name != 'player':
                 obj.object_id = pool.pop()
 
+    def cleanup(self):
+        for effect in self.effects:
+            if not effect.active:
+                self.effects.remove(effect)
+
+    def update(self):
+        self.timer += 1
+        if self.timer == self.cleanup_time:
+            self.cleanup()
+            self.timer = 0
 
 
 class DungeonMapBSP(DungeonMap):

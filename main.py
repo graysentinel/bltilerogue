@@ -31,6 +31,16 @@ def player_input(p, gm):
         if key in (terminal.TK_CLOSE, terminal.TK_ESCAPE):
             return 'exit'
 
+        camera_window = objects.Window(1, 1, p.camera.width, p.camera.height)
+        belt_1 = objects.Window(153, 26, 1, 1)
+        belt_2 = objects.Window(153, 29, 1, 1)
+        belt_3 = objects.Window(153, 32, 1, 1)
+        belt_4 = objects.Window(153, 35, 1, 1)
+        belt_5 = objects.Window(153, 38, 1, 1)
+
+        belt_slots = {'a' : belt_1, 'b' : belt_2, 'c' : belt_3, 'd' : belt_4,
+                      'e' : belt_5}
+
         if gm.game_state == 'playing':
             if key == terminal.TK_A:
                 player_move_or_attack(p, objects.west)
@@ -40,7 +50,7 @@ def player_input(p, gm):
                 player_move_or_attack(p, objects.north)
             elif key == terminal.TK_S:
                 player_move_or_attack(p, objects.south)
-            elif key == terminal.TK_KP_0:
+            elif key == terminal.TK_KP_0 or key == terminal.TK_MOUSE_RIGHT:
                 for obj in p.current_map.objects:
                     if obj.x == p.x and obj.y == p.y and obj.item:
                         p.inventory.pick_up(obj)
@@ -62,21 +72,35 @@ def player_input(p, gm):
                 player_attack(p, objects.south, 's')
             elif key == terminal.TK_KP_1:
                 player_attack(p, objects.southwest, 'sw')
-            elif key == terminal.TK_KP_5:
+            elif key == terminal.TK_KP_5 or key == terminal.TK_MOUSE_MIDDLE:
                 p.inventory.switch_active()
             elif key == terminal.TK_1:
-                p.inventory.slots['a'].stored.item.use(p, 'a')
+                p.inventory.use_item(p, 'a')
             elif key == terminal.TK_2:
-                p.inventory.slots['b'].stored.item.use(p, 'b')
+                p.inventory.use_item(p, 'b')
             elif key == terminal.TK_3:
-                p.inventory.slots['c'].stored.item.use(p, 'c')
+                p.inventory.use_item(p, 'c')
             elif key == terminal.TK_4:
-                p.inventory.slots['d'].stored.item.use(p, 'd')
+                p.inventory.use_item(p, 'd')
             elif key == terminal.TK_5:
-                p.inventory.slots['e'].stored.item.use(p, 'e')
-            elif key == terminal.TK_L:
-                log.message('Lightning bolt!', colors.light_blue)
-                effects.lightning_bolt(p)
+                p.inventory.use_item(p, 'e')
+            elif key == terminal.TK_MOUSE_LEFT:
+                mx = terminal.state(terminal.TK_MOUSE_X)
+                my = terminal.state(terminal.TK_MOUSE_Y)
+                if camera_window.contains(mx, my):
+                    tmx = int(round(mx / 4))
+                    tmy = int(round(my / 2))
+                    omx, omy = p.camera.offset(tmx, tmy)
+                    p.mouse_x = omx
+                    p.mouse_y = omy
+                    d_key = p.get_direction(omx, omy)
+                    d = objects.direction_dict[d_key]
+                    if d != 'none':
+                        player_attack(p, d, d_key)
+                else:
+                    for key, window in belt_slots.items():
+                        if window.contains(mx, my):
+                            p.inventory.use_item(p, key)
             else:
                 return 'no-turn'
 
@@ -372,12 +396,19 @@ def render(p, gm):
     gui.separator_box(right_panel_x, bottom_panel_y-1, right_panel_width,
                       7, colors.white)
 
-    terminal.puts(right_panel_x, bottom_panel_y, "Current Position:",
-                  right_panel_width, bottom_panel_height-3,
+    terminal.puts(right_panel_x, bottom_panel_y+2, "Player Position: " +
+                  p.current_position, right_panel_width, 1,
                   terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
-    terminal.puts(right_panel_x, bottom_panel_y, p.current_position,
-                  right_panel_width, bottom_panel_height-1,
-                  terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
+    '''
+    mx = int(round(terminal.state(terminal.TK_MOUSE_X) / 4))
+    my = int(round(terminal.state(terminal.TK_MOUSE_Y) / 2))
+
+    cmx, cmy = p.camera.offset(mx, my)
+    '''
+    terminal.puts(right_panel_x, bottom_panel_y+3, "Cursor Position: (" +
+                  str(p.mouse_x) + "," + str(p.mouse_y) + ')',
+                  right_panel_width,
+                  1, terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
 
     terminal.refresh()
 
@@ -416,6 +447,7 @@ terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
 terminal.set("""U+E380: assets/fireball.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("window: size=181x52, cellsize=auto, title='roguelike'")
+terminal.set("input.filter={keyboard, mouse+}")
 terminal.composition(True)
 
 # Initialize Game
@@ -436,6 +468,8 @@ player.alive = True
 player.sight_radius = 3
 player.attack = None
 player.attack_direction = None
+player.mouse_x = 0
+player.mouse_y = 0
 
 inv = objects.Inventory()
 player.inventory = inv
@@ -489,6 +523,8 @@ while True:
     for effect in dungeon_map.effects:
         if effect.active:
             effect.update()
+
+    dungeon_map.update()
 
     player.action = player_input(player, game)
     if player.action == 'exit':
