@@ -40,7 +40,7 @@ def player_input(p, gm):
                 player_move_or_attack(p, objects.north)
             elif key == terminal.TK_S:
                 player_move_or_attack(p, objects.south)
-            elif key == terminal.TK_COMMA:
+            elif key == terminal.TK_KP_0:
                 for obj in p.current_map.objects:
                     if obj.x == p.x and obj.y == p.y and obj.item:
                         p.inventory.pick_up(obj)
@@ -114,8 +114,11 @@ def player_attack(p, direction, direction_string):
             p.fighter.swing(p.inventory.weapon, direction_string)
     else:
         p.fighter.power_meter = 0
-        p.inventory.spell.cast(p, direction_string)
-        p.inventory.remove('s')
+        if p.inventory.spell is not None:
+            p.inventory.spell.cast(p, direction_string)
+            p.inventory.remove('s')
+        else:
+            log.message('No spell equipped!', colors.light_violet)
 
 
 def player_death(p):
@@ -166,11 +169,11 @@ def render(p, gm):
 
     if not p.inventory.weapon.ranged:
         if p.attack is not None and p.fighter.power_meter < 20:
-            # print('Melee Attack')
-            for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
-                weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
-                                                                    tgt_y)
-                terminal.put(weapon_x*4, weapon_y*2, 0xE275)
+            if p.inventory.weapon.active:
+                for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+                    weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
+                                                                        tgt_y)
+                    terminal.put(weapon_x*4, weapon_y*2, 0xE275)
     else:
         if p.attack is not None:
             pass
@@ -187,14 +190,19 @@ def render(p, gm):
     if p.fighter.power_meter >= 20:
         p.attack = None
         p.attack_direction = None
+        p.inventory.weapon.active = False
 
     ''' Render Map Layer '''
     terminal.layer(1)
+    camera_x = 1
+    camera_y = 1
+
+    gui.separator_box(0, 0, p.camera.width*4, p.camera.height*2, colors.white)
 
     ''' Render Primary Vision '''
     gui.terminal_set_color(255, colors.light_blue)
-    for y in range(p.camera.height):
-        for x in range(p.camera.width):
+    for y in range(camera_x, p.camera.height):
+        for x in range(camera_y, p.camera.width):
             tx, ty = p.camera.offset(x, y)
             visible = (tx, ty) in visible_tiles
             if not p.current_map.out_of_bounds(tx, ty):
@@ -244,25 +252,49 @@ def render(p, gm):
     bottom_panel_width = terminal.state(terminal.TK_WIDTH) - right_panel_width
     bottom_panel_height = terminal.state(terminal.TK_HEIGHT) - bottom_panel_y
 
-    for y in range(0, terminal.TK_HEIGHT-bottom_panel_height):
-        terminal.put(right_panel_x, y, 0x2588)
+    h = terminal.state(terminal.TK_HEIGHT)
+    w = terminal.state(terminal.TK_WIDTH)
 
-    terminal.puts(right_panel_x + 2, right_panel_y, "Name: " +
-                  p.name.capitalize())
+    # Player Name
+    gui.separator_box(right_panel_x, 0, right_panel_width, 2, colors.white)
 
-    terminal.puts(right_panel_x + 2, right_panel_y + 1, "HP: " +
-                  str(p.fighter.hp) + "/" + str(p.fighter.max_hp),
-                  right_panel_width, right_panel_height,
-                  terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_LEFT)
+    terminal.puts(right_panel_x + 2, right_panel_y, p.name.capitalize(),
+                  right_panel_width-4, 1, terminal.TK_ALIGN_TOP |
+                  terminal.TK_ALIGN_CENTER)
 
-    terminal.puts(right_panel_x + 2, right_panel_y + 3, "Attack Power")
+    # HP Bar
+    gui.separator_box(right_panel_x, right_panel_y+1, right_panel_width, 2,
+                      colors.white)
+    gui.render_bar(right_panel_x + 2, right_panel_y + 2, right_panel_width-4,
+                   'HP', p.fighter.hp, p.fighter.max_hp, colors.red,
+                   colors.darker_red, "Health: " + str(p.fighter.hp) + "/" +
+                   str(p.fighter.max_hp))
 
+    # Stamina Bar
+    gui.separator_box(right_panel_x, right_panel_y + 3, right_panel_width, 2,
+                      colors.white)
     gui.render_bar(right_panel_x + 2, right_panel_y + 4, right_panel_width-4,
                    'attack power', p.fighter.power_meter, 100,
-                   colors.darker_red)
+                   colors.orange, colors.darker_orange, "Stamina")
 
-    inventory_x = right_panel_x + 5
-    inventory_y = right_panel_y + 6
+    # Mana Bar
+    gui.separator_box(right_panel_x, right_panel_y + 5, right_panel_width, 2,
+                      colors.white)
+    gui.render_bar(right_panel_x + 2, right_panel_y + 6, right_panel_width-4,
+                   'mana', 30, 30, colors.dark_blue, colors.darker_blue, "Mana")
+
+
+    # Weapon, Spell & Armor #
+    '''
+    terminal.puts(right_panel_x, right_panel_y+8, "Inventory",
+                  right_panel_width, 1, terminal.TK_ALIGN_TOP |
+                  terminal.TK_ALIGN_CENTER)
+    '''
+    gui.separator_box(right_panel_x, right_panel_y+7, right_panel_width, 15,
+                      colors.white, title="Inventory")
+
+    inventory_x = right_panel_x + 2
+    inventory_y = right_panel_y + 10
 
     # Current Weapon
     if p.inventory.slots['w'].active:
@@ -281,6 +313,9 @@ def render(p, gm):
     else:
         gui.highlight_box(inventory_x, inventory_y + 3, p.inventory, 's',
                           colors.black)
+
+    gui.terminal_reset_color()
+
     terminal.puts(inventory_x + 6, inventory_y + 4,
                   p.inventory.get_item_name('s'))
 
@@ -289,7 +324,14 @@ def render(p, gm):
     terminal.puts(inventory_x + 6, inventory_y + 7, "Defense: " +
                   str(p.fighter.defense))
 
-    # Belt Slots
+    # Belt Slots #
+    gui.separator_box(right_panel_x, right_panel_y+22, right_panel_width,
+                      21, colors.white, title="Belt")
+    '''
+    terminal.puts(right_panel_x, right_panel_y+23, "Belt", right_panel_width,
+                  1, terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
+    '''
+
     terminal.puts(right_panel_x + 2, right_panel_y + 26, "1")
     gui.render_box(right_panel_x + 4, right_panel_y + 25,
                    p.inventory, 'a')
@@ -318,22 +360,23 @@ def render(p, gm):
                   right_panel_height, terminal.TK_ALIGN_TOP |
                   terminal.TK_ALIGN_CENTER)'''
 
-    for x in range(0, terminal.TK_WIDTH):
-        terminal.put(x, bottom_panel_y-1, 0x2588)
-
+    gui.separator_box(0, bottom_panel_y-1, w-right_panel_width, 7, colors.white)
     msg_line = 1
     for line, msg_color in log.game_messages:
         gui.terminal_set_color(255, msg_color)
-        terminal.puts(bottom_panel_x, bottom_panel_y+msg_line, line)
+        terminal.puts(bottom_panel_x+1, bottom_panel_y+msg_line-1, line)
         msg_line += 1
 
     gui.terminal_set_color(255, colors.white)
 
+    gui.separator_box(right_panel_x, bottom_panel_y-1, right_panel_width,
+                      7, colors.white)
+
     terminal.puts(right_panel_x, bottom_panel_y, "Current Position:",
-                  right_panel_width, bottom_panel_height-1,
+                  right_panel_width, bottom_panel_height-3,
                   terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
     terminal.puts(right_panel_x, bottom_panel_y, p.current_position,
-                  right_panel_width, bottom_panel_height+1,
+                  right_panel_width, bottom_panel_height-1,
                   terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
 
     terminal.refresh()
@@ -370,7 +413,9 @@ terminal.set("""U+E360: assets/spellbooks.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
                 resize=32x32""")
-terminal.set("window: size=180x52, cellsize=auto, title='roguelike'")
+terminal.set("""U+E380: assets/fireball.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("window: size=181x52, cellsize=auto, title='roguelike'")
 terminal.composition(True)
 
 # Initialize Game

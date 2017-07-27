@@ -199,8 +199,8 @@ class DungeonMap:
         self.objects.append(bow)
 
         lb_item = objects.Item()
-        lb_spell = objects.SpellEffect(spell_range=5, damage=15,
-                                       render_frames=3,
+        lb_spell = objects.SpellEffect(name='Lightning', spell_range=5,
+                                       damage=15, render_frames=3,
                                        icons={'n' : 0xE370, 's' : 0xE370,
                                               'w' : 0XE371, 'e' : 0xE371,
                                               'ne' : 0xE372, 'sw': 0xE372,
@@ -208,12 +208,30 @@ class DungeonMap:
                                               'hit' : 0xE374},
                                        charges=5,
                                        aoe_function=effects.lightning_bolt)
-        lb_book = objects.GameObject('Lightning Bolt', player.x + 2,
-                                     player.y + 2, 0xE360, item=lb_item,
+        lb_book = objects.GameObject('Book of Lightning Bolt', player.x + 1,
+                                     player.y, 0xE360, item=lb_item,
                                      spell=lb_spell, active=False,
                                      update_func=objects.update_spell)
         lb_book.current_map = self
         self.objects.append(lb_book)
+
+        fb_item = objects.Item()
+        fb_spell = objects.SpellEffect(name='Fireball', spell_range=10,
+                                       damage=10, render_frames=3,
+                                       icons={'n' : 0xE380, 's' : 0xE381,
+                                              'w' : 0xE382, 'e' : 0xE383,
+                                              'ne' : 0xE384, 'nw' : 0xE385,
+                                              'se' : 0xE386, 'sw' : 0xE387,
+                                              'hit' : 0xE388},
+                                       charges=5,
+                                       aoe_function=effects.fireball)
+        fb_book = objects.GameObject('Book of Fireball', player.x-1, player.y,
+                                     0xE361, item=fb_item, spell=fb_spell,
+                                     active=False,
+                                     update_func=objects.update_spell)
+
+        fb_book.current_map = self
+        self.objects.append(fb_book)
 
         self.assign_object_ids()
 

@@ -20,9 +20,15 @@ def update_player(player):
 
 def update_ammo(ammo):
     ammo.projectile.update()
+    if ammo.spell:
+        ammo.spell.update()
 
 def update_spell(spellbook):
     spellbook.spell.update()
+
+def update_spell_projectile(spell):
+    spell.projectile.update()
+    spell.spell.update()
 
 ''' Classes and Data Structures '''
 
@@ -212,6 +218,7 @@ class Fighter:
                 function(self.owner)
 
     def swing(self, weapon, d_key):
+        weapon.active = True
         weapon.attack(self.owner.x, self.owner.y, d_key)
         attack_tiles = weapon.attack_tiles
         for obj in self.owner.current_map.objects:
@@ -256,10 +263,6 @@ class Fighter:
 
     def update(self):
         self.recharge()
-        if self.shooting:
-            if self.frames == self.attack_delay:
-                self.shoot(self.weapon)
-                self.frames = 0
 
     def recharge(self):
         if self.power_meter < 100:
@@ -340,12 +343,12 @@ class Inventory:
         else:
             for key, slot in self.slots.items():
                 if slot.stored is None:
-                    log.message("You picked up a " + obj.name + "!",
-                                colors.white)
                     self.slots[key].stored = obj
                     self.slots[key].num_stored += 1
                     obj.current_map.objects.remove(obj)
                     break
+
+        log.message("You picked up a " + obj.name + "!", colors.white)
 
 
     def list_items(self):
@@ -368,12 +371,19 @@ class Inventory:
         if self.slots[key].stored is None:
             return 'Empty'
         else:
-            return (self.slots[key].stored.name + ' (' +
-                str(self.slots[key].num_stored) + ')')
+            if key == 's':
+                return (self.slots[key].stored.spell.name +
+                       ' (' + str(self.slots[key].num_stored) + ')')
+            else:
+                return (self.slots[key].stored.name + ' (' +
+                    str(self.slots[key].num_stored) + ')')
 
     def get_item_icon(self, key):
         if self.slots[key].stored is None:
-            return 0x0020
+            if key != 's':
+                return 0x0020
+            else:
+                return 0xE365
         else:
             return self.slots[key].stored.icon
 
@@ -384,8 +394,11 @@ class Inventory:
 
     def switch_active(self):
         if self.slot_weapon.active:
-            self.slot_weapon.active = False
-            self.slot_spell.active = True
+            if self.slot_spell.stored is not None:
+                self.slot_weapon.active = False
+                self.slot_spell.active = True
+            else:
+                log.message('No spell equipped!', colors.light_violet)
         elif self.slot_spell.active:
             self.slot_spell.active = False
             self.slot_weapon.active = True
@@ -424,6 +437,7 @@ class Weapon:
         self.ammo_icons = ammo_icons
         self.ammo_name = ammo_name
 
+        self.active = False
         self.attack_tiles = []
 
     def attack(self, source_x, source_y, direction_key):
@@ -453,11 +467,12 @@ class Weapon:
 
 
 class Projectile:
-    def __init__(self, dx, dy, power, weapon_range):
+    def __init__(self, dx, dy, power, weapon_range, aoe):
         self.dx = dx
         self.dy = dy
         self.power = power
         self.range = weapon_range
+        self.aoe = aoe
         self.range_counter = 0
         self.collision = False
 
@@ -465,24 +480,40 @@ class Projectile:
         self.delay = 3
 
     def check_collision(self):
-        if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
-            for obj in self.owner.current_map.objects:
-                if obj.fighter and (obj.x == self.owner.x and
-                                    obj.y == self.owner.y):
-                    self.hit(obj)
-                    self.collision = True
-                else:
-                    self.collision = True
+        if not self.aoe:
+            if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
+                for obj in self.owner.current_map.objects:
+                    if obj.fighter and (obj.x == self.owner.x and
+                                        obj.y == self.owner.y):
+                        self.hit(obj)
+                        self.collision = True
+                    else:
+                        self.collision = True
+        else:
+            if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
+                self.hit_aoe()
+                self.collision = True
 
     def cleanup(self):
         self.owner.active = False
         self.owner.current_map.objects.remove(self.owner)
 
+    def hit_aoe(self):
+        if self.owner.spell:
+            self.owner.spell.cast(self.owner, 'n')
+        else:
+            # implement non-magical aoe projectiles?
+            pass
+
     def hit(self, target):
-        damage = self.power - target.fighter.defense
-        log.message('The ' + target.name + ' is hit by the ' + self.owner.name +
-                    ' for ' + str(self.power) + ' damage!', colors.orange)
-        target.fighter.take_damage(damage)
+        if not self.owner.spell:
+            damage = self.power - target.fighter.defense
+            log.message('The ' + target.name + ' is hit by the ' +
+                        self.owner.name + ' for ' + str(self.power) +
+                        ' damage!', colors.orange)
+            target.fighter.take_damage(damage)
+        else:
+            self.owner.spell.cast(self.owner, 'n')
 
     def move(self):
         self.owner.x += self.dx
@@ -504,8 +535,9 @@ class Projectile:
 
 
 class SpellEffect:
-    def __init__(self, spell_range, damage, render_frames, icons, charges,
+    def __init__(self, name, spell_range, damage, render_frames, icons, charges,
                  aoe_function=None):
+        self.name = name
         self.range = spell_range
         self.damage = damage
         self.render_frames = render_frames
@@ -517,12 +549,20 @@ class SpellEffect:
         self.frames = 0
 
     def cast(self, source, d_key):
-        self.aoe = self.aoe_function(source, self.range, d_key)
-        source.current_map.effects.append(self)
-        self.active = True
-        for obj in source.current_map.objects:
-            if obj.fighter and (obj.x, obj.y, True) in self.aoe:
-                obj.fighter.take_damage(self.damage)
+        aoe = self.aoe_function(source, self.range, d_key)
+        if type(aoe) is list:
+            self.aoe = aoe
+            source.current_map.effects.append(self)
+            self.active = True
+            for obj in source.current_map.objects:
+                if obj.fighter and (obj.x, obj.y, True) in self.aoe:
+                    log.message("The " + obj.name + " takes " +
+                                str(self.damage) + " damage from the " +
+                                self.name + "!", colors.violet)
+                    obj.fighter.take_damage(self.damage)
+        elif type(aoe) is GameObject:
+            aoe.current_map = source.current_map
+            source.current_map.objects.append(aoe)
 
     def update(self):
         self.frames += 1

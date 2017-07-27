@@ -3,6 +3,7 @@ import colors
 import objects
 from tcod import libtcodpy as tcod
 from bearlibterminal import terminal
+import raycast
 
 def cast_heal(target):
     if target.fighter.hp >= target.fighter.max_hp:
@@ -66,7 +67,7 @@ def axe_attack(source_x, source_y, d_key):
 
 def bow_attack(source, range, d_key, damage):
     dx, dy = objects.direction_dict[d_key]
-    proj = objects.Projectile(dx, dy, damage, range)
+    proj = objects.Projectile(dx, dy, damage, range, aoe=False)
     return proj
 
 
@@ -99,5 +100,54 @@ def lightning_bolt(source, spell_range, d_key):
                 affected_tiles.append((tx, ty, True))
             else:
                 affected_tiles.append((tx, ty, False))
+
+    return affected_tiles
+
+
+def fireball(source, spell_range, d_key):
+    dx, dy = objects.direction_dict[d_key]
+    icon = source.inventory.spell.icons[d_key]
+    ball = objects.Projectile(dx, dy, 0, spell_range, aoe=True)
+    explosion = objects.SpellEffect(name='explosion', spell_range=2,
+                                    render_frames=7, damage=10,
+                                    icons={'n' : 0xE388, 's' : 0xE388,
+                                           'e' : 0xE388, 'w' : 0xE388,
+                                           'se' : 0xE388, 'sw' : 0xE388,
+                                           'ne' : 0xE388, 'nw' : 0xE388,
+                                           'hit' : 0xE388}, charges=0,
+                                           aoe_function=fireball_explode)
+    fireball = objects.GameObject('fireball', source.x + dx, source.y + dy,
+                                  icon, projectile=ball, spell=explosion,
+                                  update_func=objects.update_ammo)
+    return fireball
+
+
+def fireball_explode(source, spell_range, d_key):
+    damage = source.projectile.power
+    affected_tiles = []
+
+    obj = source
+    w = obj.current_map.width
+    h = obj.current_map.height
+
+    for i in range(0, raycast.RAYS + 1, raycast.STEP):
+        ax = raycast.sintable[i]
+        ay = raycast.costable[i]
+
+        x, y = obj.x, obj.y
+
+        for z in range(spell_range):
+            x += ax
+            y += ay
+
+            if x < 0 or y < 0 or x > w or y > h:
+                break
+
+            affected_tiles.append((int(round(x)), int(round(y)), True))
+
+            if obj.current_map.tiles[int(round(x))][int(round(y))] == 0:
+                break
+
+    affected_tiles.append((obj.x, obj.y, True))
 
     return affected_tiles
