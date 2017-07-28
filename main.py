@@ -20,7 +20,7 @@ class GameMaster:
         self.game_state = game_state
         self.players = []
         self.action_queue = []
-        self.fps = 25
+        self.fps = 30
 
 
 def player_input(p, gm):
@@ -153,6 +153,19 @@ def player_death(p):
 
 def render(p, gm):
     terminal.clear()
+
+    if p.camera.flash:
+        if p.camera.flash_counter < p.camera.flash_frames:
+            terminal.layer(3)
+            for y in range(p.camera.height):
+                for x in range(p.camera.width):
+                    gui.terminal_set_color(p.camera.flash_alpha, colors.white)
+                    terminal.put(x*4, y*2, 0xE500)
+            p.camera.flash_counter += 1
+            p.camera.flash_fade()
+        else:
+            p.camera.flash_deactivate()
+
     #calculate field of view for all rendering below
     #if map.fov_recompute:
         #map.fov_recompute = False
@@ -445,6 +458,8 @@ terminal.set("""U+E360: assets/spellbooks.png, size=16x16, align=center,
 terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("""U+E380: assets/fireball.png, size=16x16, align=center,
+                resize=32x32""")
+terminal.set("""U+E500: assets/white.png, size=16x16, align=center,
                 resize=32x32""")
 terminal.set("window: size=181x52, cellsize=auto, title='roguelike'")
 terminal.set("input.filter={keyboard, mouse+}")

@@ -168,6 +168,12 @@ class Camera:
         self.x2 = self.x + self.width
         self.y2 = self.y + self.height
 
+        self.flash = False
+        self.flash_frames = 30
+        self.flash_alpha = 255
+        self.flash_fade_counter = 5
+        self.flash_counter = 0
+
     def move(self, direction):
         self.x += direction.goal_x
         self.y += direction.goal_y
@@ -193,6 +199,18 @@ class Camera:
     def to_camera_coordinates(self, x, y):
         (x, y) = (x - self.x, y - self.y)
         return x, y
+
+    def flash_activate(self):
+        self.flash = True
+
+    def flash_deactivate(self):
+        self.flash = False
+        self.flash_counter = 0
+        self.flash_alpha = 255
+
+    def flash_fade(self):
+        if self.flash_counter % self.flash_fade_counter == 0:
+            self.flash_alpha -= 50
 
     @property
     def center(self):
@@ -603,6 +621,8 @@ class SpellEffect:
                                 str(self.damage) + " damage from the " +
                                 self.name + "!", colors.violet)
                     obj.fighter.take_damage(self.damage)
+                    if obj.name == 'player' and obj.camera:
+                        obj.camera.flash_activate()
         elif type(aoe) is GameObject:
             aoe.current_map = source.current_map
             source.current_map.objects.append(aoe)

@@ -110,7 +110,7 @@ def fireball(source, spell_range, d_key):
     icon = source.inventory.spell.icons[d_key]
     ball = objects.Projectile(dx, dy, 0, spell_range, aoe=True)
     explosion = objects.SpellEffect(name='explosion', spell_range=2,
-                                    render_frames=7, damage=10,
+                                    render_frames=10, damage=10,
                                     icons={'n' : 0xE388, 's' : 0xE388,
                                            'e' : 0xE388, 'w' : 0xE388,
                                            'se' : 0xE388, 'sw' : 0xE388,
