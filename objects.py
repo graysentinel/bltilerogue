@@ -94,7 +94,11 @@ class GameObject:
 
     def draw(self, camera):
         x, y = camera.to_camera_coordinates(self.x, self.y)
-        terminal.put(x*4, y*2, self.icon)
+        if self.projectile:
+            terminal.put_ext(x*4, y*2, self.projectile.x_offset,
+                             self.projectile.y_offset, self.icon)
+        else:
+            terminal.put(x*4, y*2, self.icon)
 
     def clear(self, camera):
         x, y = camera.to_camera_coordinates(self.x, self.y)
@@ -539,18 +543,23 @@ class Projectile:
         self.frames = 0
         self.delay = 3
 
+        self.x_offset = 0
+        self.y_offset = 0
+
     def check_collision(self):
         if not self.aoe:
-            if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
+            if self.owner.current_map.is_blocked_at(self.owner.x + self.dx,
+                                                    self.owner.y + self.dy):
                 for obj in self.owner.current_map.objects:
-                    if obj.fighter and (obj.x == self.owner.x and
-                                        obj.y == self.owner.y):
+                    if obj.fighter and (obj.x == self.owner.x + self.dx and
+                                        obj.y == self.owner.y + self.dy):
                         self.hit(obj)
                         self.collision = True
                     else:
                         self.collision = True
         else:
-            if self.owner.current_map.is_blocked_at(self.owner.x, self.owner.y):
+            if self.owner.current_map.is_blocked_at(self.owner.x + self.dx,
+                                                    self.owner.y + self.dy):
                 self.hit_aoe()
                 self.collision = True
 
@@ -579,8 +588,22 @@ class Projectile:
         self.owner.x += self.dx
         self.owner.y += self.dy
 
+    def fly(self):
+        cells = terminal.state(terminal.TK_CELL_WIDTH) * 4
+        base_offset = int(round(cells / self.delay))
+
+        self.x_offset = (base_offset * self.frames) * self.dx
+        self.y_offset = (base_offset * self.frames) * self.dy
+        '''
+        self.x_offset = ((int(round(terminal.state(terminal.TK_CELL_WIDTH) *
+                         self.frames))) * self.dx)
+        self.y_offset = ((int(round(terminal.state(terminal.TK_CELL_WIDTH) *
+                                       self.frames - 4))) * self.dy)
+        '''
+
     def update(self):
         self.frames += 1
+        self.fly()
         if self.frames == self.delay:
             if self.range_counter < self.range:
                 self.check_collision()
@@ -588,6 +611,8 @@ class Projectile:
                     self.move()
                     self.range_counter += 1
                     self.frames = 0
+                    self.x_offset = 0
+                    self.y_offset = 0
                 else:
                     self.cleanup()
             else:
