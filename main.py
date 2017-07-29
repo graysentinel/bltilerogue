@@ -94,8 +94,8 @@ def player_input(p, gm):
                     p.mouse_x = omx
                     p.mouse_y = omy
                     d_key = p.get_direction(omx, omy)
-                    d = objects.direction_dict[d_key]
-                    if d != 'none':
+                    if d_key != 'none':
+                        d = objects.direction_dict[d_key]
                         player_attack(p, d, d_key)
                 else:
                     for key, window in belt_slots.items():
