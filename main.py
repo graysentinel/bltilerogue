@@ -18,9 +18,83 @@ attack_animations = {'west' : 0xE250, 'northwest' : 0xE251,
 class GameMaster:
     def __init__(self, game_state):
         self.game_state = game_state
-        self.players = []
-        self.action_queue = []
         self.fps = 30
+
+    def add_player(self, game, player_name):
+        player_id = game.game_id + str(len(game.players))
+        player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
+                                         death_function=Player.death)
+        p_inv = objects.Inventory()
+        p_avatar = objects.GameObject(name=player_name, x=1, y=1, icon=0xE000,
+                                       inventory=p_inv, fighter=player_fighter,
+                                       current_map=None, player_flag=True,
+                                       update_func=objects.update_player)
+        player_cam = objects.Camera(0, 0, 37, 22)
+        player = Player(id=player_id, name=player_name, camera=player_cam,
+                         avatar=p_avatar, fov_algo='BASIC', light_walls=True,
+                         sight_radius=3)
+        return player
+
+    def start_new_game(self):
+        game_id = 'test'
+        new_game = Game('test')
+
+        p1 = self.add_player(new_game, 'player')
+        new_game.players.append(p1)
+        dungeon_map = maps.DungeonMap(50, 50)
+        dungeon_map.make_map(p1.avatar)
+        p1.camera.center_view(p1.avatar)
+        new_game.map_log.append(dungeon_map)
+        new_game.current_map = dungeon_map
+
+        for player in new_game.players:
+            dungeon_map.objects.append(player.avatar)
+            player.avatar.current_map = dungeon_map
+
+        log.message("The dungeon awaits, pathetic mortal.", colors.red)
+
+        return new_game
+
+
+class Game:
+    def __init__(self, game_id):
+        self.game_id = game_id
+        self.map_log = []
+        self.players = []
+        self.message_log = []
+        self.current_map = None
+        self.state = 'playing'
+
+    def play(self, game_master):
+        while not game_master.game_state == 'quit':
+            # Check game state
+            for player in self.players:
+                if not player.avatar.alive:
+                    game_master.game_state = 'dead'
+
+            current_player = self.players[0]
+
+            render(current_player, game_master)
+
+            terminal.layer(2)
+            for o in self.current_map.objects:
+                o.clear(current_player.camera)
+
+            for obj in self.current_map.objects:
+                if obj.active:
+                    obj.update()
+
+            for effect in self.current_map.effects:
+                if effect.active:
+                    effect.update()
+
+            self.current_map.update()
+
+            player.action = current_player.input(self)
+            if player.action == 'quit':
+                game_master.game_state = 'quit'
+
+            terminal.delay(1000 // game_master.fps)
 
 
 class Player:
@@ -88,7 +162,7 @@ class Player:
         belt_slots = {'a' : belt_1, 'b' : belt_2, 'c' : belt_3, 'd' : belt_4,
                       'e' : belt_5}
 
-        if game.game_state == 'playing':
+        if game.state == 'playing':
             if key == terminal.TK_A:
                 self.move(objects.west)
             elif key == terminal.TK_D:
@@ -151,125 +225,11 @@ class Player:
             else:
                 return 'no-turn'
 
-
-def player_input(player, gm):
-        p = player.avatar
-        key = None
-        while terminal.has_input():
-            key = terminal.read()
-
-        if key in (terminal.TK_CLOSE, terminal.TK_ESCAPE):
-            return 'exit'
-
-        camera_window = objects.Window(1, 1, player.camera.width, player.camera.height)
-        belt_1 = objects.Window(153, 26, 1, 1)
-        belt_2 = objects.Window(153, 29, 1, 1)
-        belt_3 = objects.Window(153, 32, 1, 1)
-        belt_4 = objects.Window(153, 35, 1, 1)
-        belt_5 = objects.Window(153, 38, 1, 1)
-
-        belt_slots = {'a' : belt_1, 'b' : belt_2, 'c' : belt_3, 'd' : belt_4,
-                      'e' : belt_5}
-
-        if gm.game_state == 'playing':
-            if key == terminal.TK_A:
-                player_move_or_attack(player, objects.west)
-            elif key == terminal.TK_D:
-                player_move_or_attack(player, objects.east)
-            elif key == terminal.TK_W:
-                player_move_or_attack(player, objects.north)
-            elif key == terminal.TK_S:
-                player_move_or_attack(player, objects.south)
-            elif key == terminal.TK_KP_0 or key == terminal.TK_MOUSE_RIGHT:
-                for obj in p.current_map.objects:
-                    if obj.x == p.x and obj.y == p.y and obj.item:
-                        p.inventory.pick_up(obj)
-            elif key == terminal.TK_I:
-                p.inventory.list_items()
-            elif key == terminal.TK_KP_4:
-                player_attack(p, objects.west, 'w')
-            elif key == terminal.TK_KP_7:
-                player_attack(p, objects.northwest, 'nw')
-            elif key == terminal.TK_KP_8:
-                player_attack(p, objects.north, 'n')
-            elif key == terminal.TK_KP_9:
-                player_attack(p, objects.northeast, 'ne')
-            elif key == terminal.TK_KP_6:
-                player_attack(p, objects.east, 'e')
-            elif key == terminal.TK_KP_3:
-                player_attack(p, objects.southeast, 'se')
-            elif key == terminal.TK_KP_2:
-                player_attack(p, objects.south, 's')
-            elif key == terminal.TK_KP_1:
-                player_attack(p, objects.southwest, 'sw')
-            elif key == terminal.TK_KP_5 or key == terminal.TK_MOUSE_MIDDLE:
-                p.inventory.switch_active()
-            elif key == terminal.TK_1:
-                p.inventory.use_item(p, 'a')
-            elif key == terminal.TK_2:
-                p.inventory.use_item(p, 'b')
-            elif key == terminal.TK_3:
-                p.inventory.use_item(p, 'c')
-            elif key == terminal.TK_4:
-                p.inventory.use_item(p, 'd')
-            elif key == terminal.TK_5:
-                p.inventory.use_item(p, 'e')
-            elif key == terminal.TK_MOUSE_LEFT:
-                mx = terminal.state(terminal.TK_MOUSE_X)
-                my = terminal.state(terminal.TK_MOUSE_Y)
-                if camera_window.contains(mx, my):
-                    tmx = int(round(mx / 4))
-                    tmy = int(round(my / 2))
-                    omx, omy = player.camera.offset(tmx, tmy)
-                    player.mouse_x = omx
-                    player.mouse_y = omy
-                    d_key = p.get_direction(omx, omy)
-                    if d_key != 'none':
-                        d = objects.direction_dict[d_key]
-                        player_attack(p, d, d_key)
-                else:
-                    for key, window in belt_slots.items():
-                        if window.contains(mx, my):
-                            p.inventory.use_item(p, key)
-            else:
-                return 'no-turn'
-
-
-def player_move_or_attack(player, direction):
-    p = player.avatar
-    x, y = p.move(direction)
-    if not p.current_map.is_blocked_at(x, y):
-        p.x, p.y = x, y
-        # print("Player Position: ({}, {})".format(p.x, p.y))
-        player.camera.move(direction)
-        # p.current_map.fov_recompute = True
-
-
-def player_attack(p, direction, direction_string):
-    p.attack = direction_string
-    p.attack_direction = direction
-
-    if p.inventory.slot_weapon.active:
-        if p.inventory.weapon is not None:
-            if p.inventory.weapon.ranged:
-                p.fighter.shoot(p.inventory.weapon, direction_string)
-            else:
-                p.fighter.swing(p.inventory.weapon, direction_string)
-        else:
-            log.message('No weapon equipped!', colors.yellow)
-    else:
-        p.fighter.power_meter = 0
-        if p.inventory.spell is not None:
-            p.inventory.spell.cast(p, direction_string)
-            p.inventory.remove('s')
-        else:
-            log.message('No spell equipped!', colors.light_violet)
-
-
-def player_death(p):
-    log.message('You died!', colors.red)
-    p.alive = False
-    p.icon = 0xE150
+    @staticmethod
+    def death(avatar):
+        log.message('You died!', colors.red)
+        avatar.alive = False
+        avatar.icon = 0xE150
 
 
 def render(player, gm):
@@ -593,59 +553,6 @@ terminal.set("input.filter={keyboard, mouse+}")
 terminal.composition(True)
 
 # Initialize Game
-dungeon_map = maps.DungeonMap(50, 50)
-
-player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
-                                 death_function=player_death)
-p1_inv = objects.Inventory()
-p1_avatar = objects.GameObject(name='player', x=1, y=1, icon=0xE000,
-                               inventory=p1_inv, fighter=player_fighter,
-                               current_map=dungeon_map, player_flag=True,
-                               update_func=objects.update_player)
-dungeon_map.make_map(p1_avatar)
-dungeon_map.objects.append(p1_avatar)
-
-p1_cam = objects.Camera(0, 0, 37, 22)
-p1_cam.center_view(p1_avatar)
-player1 = Player(id='p1', name='Player', camera=p1_cam, avatar=p1_avatar,
-                 fov_algo='BASIC', light_walls=True, sight_radius=3)
-
-game = GameMaster('playing')
-
-log.message("Welcome to the jungle.", colors.red)
-
-# Main Game Loop
-while True:
-    # Check game state
-    if not player1.avatar.alive:
-        game.game_state = 'dead'
-
-    render(player1, game)
-
-    terminal.layer(2)
-    for o in dungeon_map.objects:
-        o.clear(player1.camera)
-
-    '''
-    for obj in dungeon_map.objects:
-        if obj.ai:
-            obj.ai.take_turn()
-        if obj.fighter:
-            obj.fighter.recharge()
-    '''
-
-    for obj in dungeon_map.objects:
-        if obj.active:
-            obj.update()
-
-    for effect in dungeon_map.effects:
-        if effect.active:
-            effect.update()
-
-    dungeon_map.update()
-
-    player1.action = player1.input(game)
-    if player1.action == 'quit':
-        break
-
-    terminal.delay(1000 // game.fps)
+the_gm = GameMaster('playing')
+new_game = the_gm.start_new_game()
+new_game.play(game_master=the_gm)
