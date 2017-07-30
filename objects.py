@@ -568,7 +568,7 @@ class Projectile:
         self.collision = False
 
         self.frames = 0
-        self.delay = 3
+        self.delay = 2
 
         self.x_offset = 0
         self.y_offset = 0
@@ -587,10 +587,6 @@ class Projectile:
         else:
             if self.owner.current_map.is_blocked_at(self.owner.x + self.dx,
                                                     self.owner.y + self.dy):
-                for obj in self.owner.current_map.objects:
-                    if obj.fighter and (obj.x == self.owner.x + self.dx and
-                                        obj.y == self.owner.y + self.dy):
-                        print("Collided with " + obj.name)
                 self.hit_aoe()
                 self.collision = True
 

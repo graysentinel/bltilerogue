@@ -32,7 +32,7 @@ class GameMaster:
         player_cam = objects.Camera(0, 0, 37, 22)
         player = Player(id=player_id, name=player_name, camera=player_cam,
                          avatar=p_avatar, fov_algo='BASIC', light_walls=True,
-                         sight_radius=3)
+                         sight_radius=4)
         return player
 
     def start_new_game(self):
@@ -54,6 +54,42 @@ class GameMaster:
         log.message("The dungeon awaits, pathetic mortal.", colors.red)
 
         return new_game
+
+    def initialize_terminal(self):
+        terminal.open()
+        terminal.set("""U+E000: assets/rogue.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E050: assets/floors.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E060: assets/walls.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E070: assets/doors.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E100: assets/basic-monsters.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E200: assets/items.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E250: assets/weapons.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E275: assets/swordslash.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E300: assets/armor.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E350: assets/arrows.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E360: assets/spellbooks.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E380: assets/fireball.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("""U+E500: assets/white.png, size=16x16, align=center,
+                        resize=32x32""")
+        terminal.set("window: size=181x52, cellsize=auto, title='roguelike'")
+        terminal.set("input.filter={keyboard, mouse+}")
+        terminal.composition(True)
 
 
 class Game:
@@ -409,11 +445,6 @@ def render(player, gm):
 
 
     # Weapon, Spell & Armor #
-    '''
-    terminal.puts(right_panel_x, right_panel_y+8, "Inventory",
-                  right_panel_width, 1, terminal.TK_ALIGN_TOP |
-                  terminal.TK_ALIGN_CENTER)
-    '''
     gui.separator_box(right_panel_x, right_panel_y+7, right_panel_width, 15,
                       colors.white, title="Inventory")
 
@@ -451,10 +482,6 @@ def render(player, gm):
     # Belt Slots #
     gui.separator_box(right_panel_x, right_panel_y+22, right_panel_width,
                       21, colors.white, title="Belt")
-    '''
-    terminal.puts(right_panel_x, right_panel_y+23, "Belt", right_panel_width,
-                  1, terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
-    '''
 
     terminal.puts(right_panel_x + 2, right_panel_y + 26, "1")
     gui.render_box(right_panel_x + 4, right_panel_y + 25,
@@ -476,14 +503,6 @@ def render(player, gm):
     gui.render_box(right_panel_x + 4, right_panel_y + 37,
                    p.inventory, 'e')
 
-    '''terminal.puts(right_panel_x + 8, right_panel_y + 26,
-                  p.inventory.get_item_name('a'))'''
-
-    '''terminal.puts(right_panel_x, right_panel_y+1, "Power: " +
-                  str(p.fighter.power_meter) + "/100", right_panel_width,
-                  right_panel_height, terminal.TK_ALIGN_TOP |
-                  terminal.TK_ALIGN_CENTER)'''
-
     gui.separator_box(0, bottom_panel_y-1, w-right_panel_width, 7, colors.white)
     msg_line = 1
     for line, msg_color in log.game_messages:
@@ -499,12 +518,7 @@ def render(player, gm):
     terminal.puts(right_panel_x, bottom_panel_y+2, "Player Position: " +
                   p.current_position, right_panel_width, 1,
                   terminal.TK_ALIGN_MIDDLE | terminal.TK_ALIGN_CENTER)
-    '''
-    mx = int(round(terminal.state(terminal.TK_MOUSE_X) / 4))
-    my = int(round(terminal.state(terminal.TK_MOUSE_Y) / 2))
 
-    cmx, cmy = player.camera.offset(mx, my)
-    '''
     terminal.puts(right_panel_x, bottom_panel_y+3, "Cursor Position: (" +
                   str(player.mouse_x) + "," + str(player.mouse_y) + ')',
                   right_panel_width,
@@ -516,43 +530,9 @@ def render(player, gm):
 def current_layer():
     return terminal.state(terminal.TK_LAYER)
 
-# Initialize Window
-terminal.open()
-terminal.set("""U+E000: assets/rogue.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E050: assets/floors.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E060: assets/walls.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E070: assets/doors.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E100: assets/basic-monsters.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E150: assets/corpse.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E200: assets/items.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E250: assets/weapons.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E275: assets/swordslash.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E300: assets/armor.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E350: assets/arrows.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E360: assets/spellbooks.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E380: assets/fireball.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("""U+E500: assets/white.png, size=16x16, align=center,
-                resize=32x32""")
-terminal.set("window: size=181x52, cellsize=auto, title='roguelike'")
-terminal.set("input.filter={keyboard, mouse+}")
-terminal.composition(True)
 
 # Initialize Game
 the_gm = GameMaster('playing')
+the_gm.initialize_terminal()
 new_game = the_gm.start_new_game()
 new_game.play(game_master=the_gm)
