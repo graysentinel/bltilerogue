@@ -52,7 +52,8 @@ class Window:
 class GameObject:
     def __init__(self, name, x, y, icon, blocks=False, fighter=None, ai=None,
                  light_source=None, item=None, weapon=None, projectile=None,
-                 spell=None, update_func=update_default, active=True):
+                 spell=None, update_func=update_default, active=True,
+                 current_map=None, inventory=None, player_flag=False):
         self.name = name
         self.x = x
         self.y = y
@@ -89,8 +90,21 @@ class GameObject:
 
         self.update_func = update_func
         self.active = active
+        self.current_map = current_map
+
+        self.inventory = inventory
+        if self.inventory:
+            self.inventory.owner = self
+
+        self.player_flag = player_flag
 
         self.object_id = None
+        self.attack = None
+        self.attack_direction = None
+        self.alive = False
+
+        if self.player_flag:
+            self.alive = True
 
     def draw(self, camera):
         x, y = camera.to_camera_coordinates(self.x, self.y)
@@ -160,6 +174,19 @@ class GameObject:
     @property
     def current_position(self):
         return "(" + str(self.x) + "," + str(self.y) + ")"
+
+
+class PlayerGameObject(GameObject):
+    def __init__(self, name, x, y, icon, inventory, fighter, current_map,
+                 player_flag):
+        super().__init__(self, name, x, y, icon, fighter=fighter,
+                         update_func=update_player, current_map=current_map,
+                         player_flag=player_flag)
+        self.inventory = inventory
+
+        self.attack = None
+        self.attack_direction = None
+        self.alive = True
 
 
 class Camera:
@@ -560,6 +587,10 @@ class Projectile:
         else:
             if self.owner.current_map.is_blocked_at(self.owner.x + self.dx,
                                                     self.owner.y + self.dy):
+                for obj in self.owner.current_map.objects:
+                    if obj.fighter and (obj.x == self.owner.x + self.dx and
+                                        obj.y == self.owner.y + self.dy):
+                        print("Collided with " + obj.name)
                 self.hit_aoe()
                 self.collision = True
 
@@ -646,8 +677,8 @@ class SpellEffect:
                                 str(self.damage) + " damage from the " +
                                 self.name + "!", colors.violet)
                     obj.fighter.take_damage(self.damage)
-                    if obj.name == 'player' and obj.camera:
-                        obj.camera.flash_activate()
+                    if obj.player_flag and obj.owner.camera:
+                        obj.owner.camera.flash_activate()
         elif type(aoe) is GameObject:
             aoe.current_map = source.current_map
             source.current_map.objects.append(aoe)

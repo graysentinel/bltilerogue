@@ -36,7 +36,7 @@ def separator_box(x, y, w, h, color, title=None):
 
     if title is not None:
         terminal.put(x, y+2, 0x255F)
-        terminal.put(x+w-1, y+2, 0x2563)
+        terminal.put(x+w-1, y+2, 0x2562)
         for x1 in range(x+1, x+w-1):
             terminal.put(x1, y+2, 0x2500)
 

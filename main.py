@@ -23,7 +23,137 @@ class GameMaster:
         self.fps = 30
 
 
-def player_input(p, gm):
+class Player:
+    def __init__(self, id, name, camera, avatar, fov_algo, light_walls,
+                 sight_radius):
+        self.id = id
+        self.name = name
+        self.camera = camera
+        self.avatar = avatar
+        self.fov_algo = fov_algo
+        self.fov_light_walls = light_walls
+        self.sight_radius = sight_radius
+
+        self.mouse_x = 0
+        self.mouse_y = 0
+        self.action = None
+        self.visible = None
+        self.avatar.owner = self
+
+    def move(self, direction):
+        x, y = self.avatar.move(direction)
+        if not self.avatar.current_map.is_blocked_at(x, y):
+            self.avatar.x, self.avatar.y = x, y
+            self.camera.move(direction)
+
+    def attack(self, direction_key):
+        p = self.avatar
+        p.attack = direction_key
+        p.attack_direction = objects.direction_dict[direction_key]
+
+        if p.inventory.slot_weapon.active:
+            if p.inventory.weapon is not None:
+                if p.inventory.weapon.ranged:
+                    p.fighter.shoot(p.inventory.weapon, direction_key)
+                else:
+                    p.fighter.swing(p.inventory.weapon, direction_key)
+            else:
+                log.message('No weapon equipped!', colors.yellow)
+        else:
+            p.fighter.power_meter = 0
+            if p.inventory.spell is not None:
+                p.inventory.spell.cast(p, direction_key)
+                p.inventory.remove('s')
+            else:
+                log.message('No spell equipped!', colors.light_violet)
+
+    def input(self, game):
+        p = self.avatar
+        key = None
+
+        while terminal.has_input():
+            key = terminal.read()
+
+        if key in (terminal.TK_CLOSE, terminal.TK_ESCAPE):
+            return 'quit'
+
+        camera_window = objects.Window(1, 1, self.camera.width,
+                                       self.camera.height)
+        belt_1 = objects.Window(153, 26, 1, 1)
+        belt_2 = objects.Window(153, 29, 1, 1)
+        belt_3 = objects.Window(153, 32, 1, 1)
+        belt_4 = objects.Window(153, 35, 1, 1)
+        belt_5 = objects.Window(153, 38, 1, 1)
+
+        belt_slots = {'a' : belt_1, 'b' : belt_2, 'c' : belt_3, 'd' : belt_4,
+                      'e' : belt_5}
+
+        if game.game_state == 'playing':
+            if key == terminal.TK_A:
+                self.move(objects.west)
+            elif key == terminal.TK_D:
+                self.move(objects.east)
+            elif key == terminal.TK_W:
+                self.move(objects.north)
+            elif key == terminal.TK_S:
+                self.move(objects.south)
+            elif key == terminal.TK_KP_0 or key == terminal.TK_MOUSE_RIGHT:
+                for obj in p.current_map.objects:
+                    if obj.x == p.x and obj.y == p.y and obj.item:
+                        p.inventory.pick_up(obj)
+            elif key == terminal.TK_I:
+                p.inventory.list_items()
+            elif key == terminal.TK_KP_4:
+                self.attack('w')
+            elif key == terminal.TK_KP_7:
+                self.attack('nw')
+            elif key == terminal.TK_KP_8:
+                self.attack('n')
+            elif key == terminal.TK_KP_9:
+                self.attack('ne')
+            elif key == terminal.TK_KP_6:
+                self.attack('e')
+            elif key == terminal.TK_KP_3:
+                self.attack('se')
+            elif key == terminal.TK_KP_2:
+                self.attack('s')
+            elif key == terminal.TK_KP_1:
+                self.attack('sw')
+            elif key == terminal.TK_KP_5 or key == terminal.TK_MOUSE_MIDDLE:
+                p.inventory.switch_active()
+            elif key == terminal.TK_1:
+                p.inventory.use_item(p, 'a')
+            elif key == terminal.TK_2:
+                p.inventory.use_item(p, 'b')
+            elif key == terminal.TK_3:
+                p.inventory.use_item(p, 'c')
+            elif key == terminal.TK_4:
+                p.inventory.use_item(p, 'd')
+            elif key == terminal.TK_5:
+                p.inventory.use_item(p, 'e')
+            elif key == terminal.TK_MOUSE_LEFT:
+                mx = terminal.state(terminal.TK_MOUSE_X)
+                my = terminal.state(terminal.TK_MOUSE_Y)
+                if camera_window.contains(mx, my):
+                    tmx = int(round(mx / 4))
+                    tmy = int(round(my / 2))
+                    omx, omy = self.camera.offset(tmx, tmy)
+                    self.mouse_x = omx
+                    self.mouse_y = omy
+                    d_key = p.get_direction(omx, omy)
+                    if d_key != 'none':
+                        d = objects.direction_dict[d_key]
+                        self.attack(d_key)
+                else:
+                    for key, window in belt_slots.items():
+                        if window.contains(mx, my):
+                            p.inventory.use_item(p, key)
+            else:
+                return 'no-turn'
+
+
+def player_input(player, gm):
+        p = player.avatar
         key = None
         while terminal.has_input():
             key = terminal.read()
@@ -31,7 +161,7 @@ def player_input(p, gm):
         if key in (terminal.TK_CLOSE, terminal.TK_ESCAPE):
             return 'exit'
 
-        camera_window = objects.Window(1, 1, p.camera.width, p.camera.height)
+        camera_window = objects.Window(1, 1, player.camera.width, player.camera.height)
         belt_1 = objects.Window(153, 26, 1, 1)
         belt_2 = objects.Window(153, 29, 1, 1)
         belt_3 = objects.Window(153, 32, 1, 1)
@@ -43,13 +173,13 @@ def player_input(p, gm):
 
         if gm.game_state == 'playing':
             if key == terminal.TK_A:
-                player_move_or_attack(p, objects.west)
+                player_move_or_attack(player, objects.west)
             elif key == terminal.TK_D:
-                player_move_or_attack(p, objects.east)
+                player_move_or_attack(player, objects.east)
             elif key == terminal.TK_W:
-                player_move_or_attack(p, objects.north)
+                player_move_or_attack(player, objects.north)
             elif key == terminal.TK_S:
-                player_move_or_attack(p, objects.south)
+                player_move_or_attack(player, objects.south)
             elif key == terminal.TK_KP_0 or key == terminal.TK_MOUSE_RIGHT:
                 for obj in p.current_map.objects:
                     if obj.x == p.x and obj.y == p.y and obj.item:
@@ -90,9 +220,9 @@ def player_input(p, gm):
                 if camera_window.contains(mx, my):
                     tmx = int(round(mx / 4))
                     tmy = int(round(my / 2))
-                    omx, omy = p.camera.offset(tmx, tmy)
-                    p.mouse_x = omx
-                    p.mouse_y = omy
+                    omx, omy = player.camera.offset(tmx, tmy)
+                    player.mouse_x = omx
+                    player.mouse_y = omy
                     d_key = p.get_direction(omx, omy)
                     if d_key != 'none':
                         d = objects.direction_dict[d_key]
@@ -105,25 +235,13 @@ def player_input(p, gm):
                 return 'no-turn'
 
 
-def player_move_or_attack(p, direction):
-
-    '''
-    target = None
-    for obj in p.current_map.objects:
-        if obj.fighter and (obj.x == x and obj.y == y):
-            target = obj
-            break
-
-    if target is not None:
-        p.fighter.attack(target)
-
-    else:
-    '''
+def player_move_or_attack(player, direction):
+    p = player.avatar
     x, y = p.move(direction)
     if not p.current_map.is_blocked_at(x, y):
         p.x, p.y = x, y
         # print("Player Position: ({}, {})".format(p.x, p.y))
-        p.camera.move(direction)
+        player.camera.move(direction)
         # p.current_map.fov_recompute = True
 
 
@@ -132,10 +250,13 @@ def player_attack(p, direction, direction_string):
     p.attack_direction = direction
 
     if p.inventory.slot_weapon.active:
-        if p.inventory.weapon.ranged:
-            p.fighter.shoot(p.inventory.weapon, direction_string)
+        if p.inventory.weapon is not None:
+            if p.inventory.weapon.ranged:
+                p.fighter.shoot(p.inventory.weapon, direction_string)
+            else:
+                p.fighter.swing(p.inventory.weapon, direction_string)
         else:
-            p.fighter.swing(p.inventory.weapon, direction_string)
+            log.message('No weapon equipped!', colors.yellow)
     else:
         p.fighter.power_meter = 0
         if p.inventory.spell is not None:
@@ -151,20 +272,22 @@ def player_death(p):
     p.icon = 0xE150
 
 
-def render(p, gm):
+def render(player, gm):
     terminal.clear()
+    p = player.avatar
 
-    if p.camera.flash:
-        if p.camera.flash_counter < p.camera.flash_frames:
+    if player.camera.flash:
+        if player.camera.flash_counter < player.camera.flash_frames:
             terminal.layer(3)
-            for y in range(p.camera.height):
-                for x in range(p.camera.width):
-                    gui.terminal_set_color(p.camera.flash_alpha, colors.white)
+            for y in range(player.camera.height):
+                for x in range(player.camera.width):
+                    gui.terminal_set_color(player.camera.flash_alpha,
+                                           colors.white)
                     terminal.put(x*4, y*2, 0xE500)
-            p.camera.flash_counter += 1
-            p.camera.flash_fade()
+            player.camera.flash_counter += 1
+            player.camera.flash_fade()
         else:
-            p.camera.flash_deactivate()
+            player.camera.flash_deactivate()
 
     #calculate field of view for all rendering below
     #if map.fov_recompute:
@@ -172,15 +295,15 @@ def render(p, gm):
 
     ''' Set visible and maximum view distance '''
     visible_tiles = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
-                                     fov=p.fov_algo,
-                                     radius=p.sight_radius,
-                                     lightWalls=p.fov_light_walls)
+                                     fov=player.fov_algo,
+                                     radius=player.sight_radius,
+                                     lightWalls=player.fov_light_walls)
 
     player.visible = visible_tiles
 
     max_visible = tdl.map.quickFOV(p.x, p.y, p.current_map.is_visible_tile,
-                                   fov=p.fov_algo, radius=10,
-                                   lightWalls=p.fov_light_walls)
+                                   fov=player.fov_algo, radius=10,
+                                   lightWalls=player.fov_light_walls)
 
     light_source_tiles = []
     lit_tiles = []
@@ -195,52 +318,54 @@ def render(p, gm):
                 light_source_tiles.append((x, y, o.light_source.color))
             if (o.x, o.y) in max_visible:
                 gui.terminal_set_color(255, o.light_source.color)
-                o.draw(p.camera)
+                o.draw(player.camera)
 
         else:
             if (o.x, o.y) in max_visible and (o.x, o.y) in lit_tiles:
-                o.draw(p.camera)
+                o.draw(player.camera)
 
             if (o.x, o.y) in visible_tiles:
-                o.draw(p.camera)
+                o.draw(player.camera)
 
-    if not p.inventory.weapon.ranged:
-        if p.attack is not None and p.fighter.power_meter < 20:
-            if p.inventory.weapon.active:
-                for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
-                    weapon_x, weapon_y = p.camera.to_camera_coordinates(tgt_x,
-                                                                        tgt_y)
-                    terminal.put(weapon_x*4, weapon_y*2, 0xE275)
-    else:
-        if p.attack is not None:
-            pass
+    if p.inventory.weapon is not None:
+        if not p.inventory.weapon.ranged:
+            if p.attack is not None and p.fighter.power_meter < 20:
+                if p.inventory.weapon.active:
+                    for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+                        weapon_x, weapon_y = player.camera.to_camera_coordinates(tgt_x, tgt_y)
+                        terminal.put(weapon_x*4, weapon_y*2, 0xE275)
+        else:
+            if p.attack is not None:
+                pass
 
     for effect in p.current_map.effects:
         if effect.active:
             for ex, ey, hit in effect.aoe:
-                ex2, ey2 = p.camera.to_camera_coordinates(ex, ey)
+                ex2, ey2 = player.camera.to_camera_coordinates(ex, ey)
                 if hit:
                     terminal.put(ex2*4, ey2*2, effect.icons['hit'])
                 else:
                     terminal.put(ex2*4, ey2*2, effect.icons[p.attack])
 
-    if p.fighter.power_meter >= 20:
-        p.attack = None
-        p.attack_direction = None
-        p.inventory.weapon.active = False
+    if p.inventory.weapon is not None:
+        if p.fighter.power_meter >= 20:
+            p.attack = None
+            p.attack_direction = None
+            p.inventory.weapon.active = False
 
     ''' Render Map Layer '''
     terminal.layer(1)
     camera_x = 1
     camera_y = 1
 
-    gui.separator_box(0, 0, p.camera.width*4, p.camera.height*2, colors.white)
+    gui.separator_box(0, 0, player.camera.width*4, player.camera.height*2,
+                      colors.white)
 
     ''' Render Primary Vision '''
     gui.terminal_set_color(255, colors.light_blue)
-    for y in range(camera_x, p.camera.height):
-        for x in range(camera_y, p.camera.width):
-            tx, ty = p.camera.offset(x, y)
+    for y in range(camera_x, player.camera.height):
+        for x in range(camera_y, player.camera.width):
+            tx, ty = player.camera.offset(x, y)
             visible = (tx, ty) in visible_tiles
             if not p.current_map.out_of_bounds(tx, ty):
                 tile = p.current_map.tiles[tx][ty]
@@ -257,9 +382,9 @@ def render(p, gm):
                 terminal.put(x*4, y*2, 0xE050)
 
     ''' Render Light Effects '''
-    for y in range(p.camera.height):
-        for x in range(p.camera.width):
-            vx, vy = p.camera.offset(x, y)
+    for y in range(player.camera.height):
+        for x in range(player.camera.width):
+            vx, vy = player.camera.offset(x, y)
             in_max_visible_range = (vx, vy) in max_visible
             #print(light_source_tiles)
             if in_max_visible_range:
@@ -279,13 +404,15 @@ def render(p, gm):
     terminal.layer(0)
     terminal.color("white")
 
-    right_panel_x = p.camera.width * 4
+    right_panel_x = player.camera.width * 4
     right_panel_y = 1
-    right_panel_width = terminal.state(terminal.TK_WIDTH) - p.camera.width*4
-    right_panel_height = terminal.state(terminal.TK_HEIGHT) - p.camera.height*2
+    right_panel_width = (terminal.state(terminal.TK_WIDTH) -
+                         player.camera.width*4)
+    right_panel_height = (terminal.state(terminal.TK_HEIGHT) -
+                         player.camera.height*2)
 
     bottom_panel_x = 1
-    bottom_panel_y = (p.camera.height * 2) + 1
+    bottom_panel_y = (player.camera.height * 2) + 1
     bottom_panel_width = terminal.state(terminal.TK_WIDTH) - right_panel_width
     bottom_panel_height = terminal.state(terminal.TK_HEIGHT) - bottom_panel_y
 
@@ -295,7 +422,7 @@ def render(p, gm):
     # Player Name
     gui.separator_box(right_panel_x, 0, right_panel_width, 2, colors.white)
 
-    terminal.puts(right_panel_x + 2, right_panel_y, p.name.capitalize(),
+    terminal.puts(right_panel_x + 2, right_panel_y, player.name.capitalize(),
                   right_panel_width-4, 1, terminal.TK_ALIGN_TOP |
                   terminal.TK_ALIGN_CENTER)
 
@@ -416,10 +543,10 @@ def render(p, gm):
     mx = int(round(terminal.state(terminal.TK_MOUSE_X) / 4))
     my = int(round(terminal.state(terminal.TK_MOUSE_Y) / 2))
 
-    cmx, cmy = p.camera.offset(mx, my)
+    cmx, cmy = player.camera.offset(mx, my)
     '''
     terminal.puts(right_panel_x, bottom_panel_y+3, "Cursor Position: (" +
-                  str(p.mouse_x) + "," + str(p.mouse_y) + ')',
+                  str(player.mouse_x) + "," + str(player.mouse_y) + ')',
                   right_panel_width,
                   1, terminal.TK_ALIGN_TOP | terminal.TK_ALIGN_CENTER)
 
@@ -466,46 +593,22 @@ terminal.set("input.filter={keyboard, mouse+}")
 terminal.composition(True)
 
 # Initialize Game
+dungeon_map = maps.DungeonMap(50, 50)
+
 player_fighter = objects.Fighter(hp=30, defense=2, power=5, recharge=20,
                                  death_function=player_death)
-player = objects.GameObject('player', 1, 1, 0xE000, fighter=player_fighter,
-                            update_func=objects.update_player)
-dungeon_map = maps.DungeonMap(50, 50)
-dungeon_map.make_map(player)
-dungeon_map.objects.append(player)
+p1_inv = objects.Inventory()
+p1_avatar = objects.GameObject(name='player', x=1, y=1, icon=0xE000,
+                               inventory=p1_inv, fighter=player_fighter,
+                               current_map=dungeon_map, player_flag=True,
+                               update_func=objects.update_player)
+dungeon_map.make_map(p1_avatar)
+dungeon_map.objects.append(p1_avatar)
 
-player.current_map = dungeon_map
-player.action = None
-player.fov_algo = 'BASIC'
-player.fov_light_walls = True
-player.object_id = 'p1'
-player.alive = True
-player.sight_radius = 3
-player.attack = None
-player.attack_direction = None
-player.mouse_x = 0
-player.mouse_y = 0
-
-inv = objects.Inventory()
-player.inventory = inv
-player.inventory.owner = player
-
-'''
-sword_wpn = objects.Weapon(2, effects.sword_attack)
-sword = objects.GameObject('sword', 0, 0, 0xE251, weapon=sword_wpn)
-inv.slot_weapon.stored = sword
-'''
-
-axe_wpn = objects.Weapon(2, effects.axe_attack)
-axe_item = objects.Item()
-axe = objects.GameObject('axe', 0, 0, 0xE250, item=axe_item, weapon=axe_wpn,
-                         active=False)
-axe.current_map = dungeon_map
-inv.slot_weapon.stored = axe
-
-player_cam1 = objects.Camera(0, 0, 37, 22)
-player.camera = player_cam1
-player.camera.center_view(player)
+p1_cam = objects.Camera(0, 0, 37, 22)
+p1_cam.center_view(p1_avatar)
+player1 = Player(id='p1', name='Player', camera=p1_cam, avatar=p1_avatar,
+                 fov_algo='BASIC', light_walls=True, sight_radius=3)
 
 game = GameMaster('playing')
 
@@ -514,14 +617,14 @@ log.message("Welcome to the jungle.", colors.red)
 # Main Game Loop
 while True:
     # Check game state
-    if not player.alive:
+    if not player1.avatar.alive:
         game.game_state = 'dead'
 
-    render(player, game)
+    render(player1, game)
 
     terminal.layer(2)
     for o in dungeon_map.objects:
-        o.clear(player.camera)
+        o.clear(player1.camera)
 
     '''
     for obj in dungeon_map.objects:
@@ -541,8 +644,8 @@ while True:
 
     dungeon_map.update()
 
-    player.action = player_input(player, game)
-    if player.action == 'exit':
+    player1.action = player1.input(game)
+    if player1.action == 'quit':
         break
 
     terminal.delay(1000 // game.fps)

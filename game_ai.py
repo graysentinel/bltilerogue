@@ -15,7 +15,7 @@ class BasicMonster:
         monster = self.owner
 
         for obj in monster.current_map.objects:
-            if obj.name == 'player':
+            if obj.player_flag:
                 p = obj
 
         if not self.active:
