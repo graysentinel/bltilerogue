@@ -309,9 +309,9 @@ class Fighter:
         attack_tiles = weapon.attack_tiles
         for obj in self.owner.current_map.objects:
             if obj.fighter and (obj.x, obj.y) in attack_tiles:
-                self.attack(obj)
-                if weapon.special is not None:
+                if weapon.special is not None and self.power_meter == 100:
                     weapon.special(obj, d_key)
+                self.attack(obj)
             else:
                 pass
 
@@ -539,6 +539,8 @@ class Weapon:
 
         self.active = False
         self.attack_tiles = []
+        self.default_attack_icon = 0xE275
+        self.attack_icon = 0xE275
 
     def attack(self, source_x, source_y, direction_key):
         if self.attack_function is None:

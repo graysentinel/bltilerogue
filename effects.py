@@ -82,6 +82,9 @@ def push_back(target, d_key):
     if not target.current_map.is_blocked_at(target.x + dx, target.y + dy):
         target.x += dx
         target.y += dy
+    else:
+        log.message('The ' + target.name + ' hits the barrier with a grunt!',
+                    colors.light_gray)
 
 
 def bow_attack(source, range, d_key, damage):

@@ -330,7 +330,8 @@ def render(player, gm):
                 if p.inventory.weapon.active:
                     for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
                         weapon_x, weapon_y = player.camera.to_camera_coordinates(tgt_x, tgt_y)
-                        terminal.put(weapon_x*4, weapon_y*2, 0xE275)
+                        terminal.put(weapon_x*4, weapon_y*2,
+                                     p.inventory.weapon.attack_icon)
         else:
             if p.attack is not None:
                 pass
