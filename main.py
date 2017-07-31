@@ -87,7 +87,8 @@ class GameMaster:
                         resize=32x32""")
         terminal.set("""U+E500: assets/white.png, size=16x16, align=center,
                         resize=32x32""")
-        terminal.set("window: size=181x52, cellsize=auto, title='roguelike'")
+        terminal.set("""window: size=181x52, cellsize=auto, title='roguelike',
+                     font: assets/Px437_IBM_VGA8.ttf""")
         terminal.set("input.filter={keyboard, mouse+}")
         terminal.composition(True)
 

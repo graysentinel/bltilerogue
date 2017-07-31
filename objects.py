@@ -428,11 +428,17 @@ class Inventory:
             obj.current_map.objects.remove(obj)
         else:
             for key, slot in self.slots.items():
-                if slot.stored is None:
-                    self.slots[key].stored = obj
-                    self.slots[key].num_stored += 1
-                    obj.current_map.objects.remove(obj)
-                    break
+                if slot.stored is not None:
+                    if slot.stored.name == obj.name:
+                        slot.num_stored += 1
+                        obj.current_map.objects.remove(obj)
+                        break
+                else:
+                    if slot.stored is None:
+                        self.slots[key].stored = obj
+                        self.slots[key].num_stored += 1
+                        obj.current_map.objects.remove(obj)
+                        break
 
         log.message("You picked up a " + obj.name + "!", colors.white)
 
