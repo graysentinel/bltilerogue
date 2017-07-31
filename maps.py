@@ -201,6 +201,16 @@ class DungeonMap:
         bow.current_map = self
         self.objects.append(bow)
 
+        spear_item = objects.Item()
+        spear_wpn = objects.Weapon(power=2,
+                                   attack_function=effects.spear_attack,
+                                   special=effects.push_back)
+        spear = objects.GameObject('spear', player.x, player.y-1, 0xE253,
+                                   item=spear_item, weapon=spear_wpn,
+                                   active=False)
+        spear.current_map = self
+        self.objects.append(spear)
+
         lb_item = objects.Item()
         lb_spell = objects.SpellEffect(name='Lightning', spell_range=5,
                                        damage=15, render_frames=3,

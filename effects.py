@@ -66,6 +66,24 @@ def axe_attack(source_x, source_y, d_key):
     return target_tiles
 
 
+def spear_attack(source_x, source_y, d_key):
+    target_tiles = []
+    dx, dy = objects.direction_dict[d_key]
+    sq1x = source_x + dx
+    sq1y = source_y + dy
+    target_tiles.append((sq1x, sq1y))
+    target_tiles.append((sq1x + dx, sq1y + dy))
+
+    return target_tiles
+
+
+def push_back(target, d_key):
+    dx, dy = objects.direction_dict[d_key]
+    if not target.current_map.is_blocked_at(target.x + dx, target.y + dy):
+        target.x += dx
+        target.y += dy
+
+
 def bow_attack(source, range, d_key, damage):
     dx, dy = objects.direction_dict[d_key]
     proj = objects.Projectile(dx, dy, damage, range, aoe=False)

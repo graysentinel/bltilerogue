@@ -310,6 +310,8 @@ class Fighter:
         for obj in self.owner.current_map.objects:
             if obj.fighter and (obj.x, obj.y) in attack_tiles:
                 self.attack(obj)
+                if weapon.special is not None:
+                    weapon.special(obj, d_key)
             else:
                 pass
 
@@ -526,13 +528,14 @@ class Item:
 
 class Weapon:
     def __init__(self, power, attack_function=None, ranged=False, radius=0,
-                 ammo_icons={}, ammo_name=''):
+                 ammo_icons={}, ammo_name='', special=None):
         self.power = power
         self.attack_function = attack_function
         self.ranged = ranged
         self.radius = radius
         self.ammo_icons = ammo_icons
         self.ammo_name = ammo_name
+        self.special = special
 
         self.active = False
         self.attack_tiles = []
