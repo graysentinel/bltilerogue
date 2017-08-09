@@ -8,6 +8,8 @@ import log
 import effects
 import raycast
 import math
+import sys
+import shelve
 
 attack_animations = {'west' : 0xE250, 'northwest' : 0xE251,
                      'north' : 0xE252, 'northeast' : 0xE253, 'east': 0xE254,
@@ -19,6 +21,8 @@ class GameMaster:
     def __init__(self, game_state):
         self.game_state = game_state
         self.fps = 30
+
+        self.current_game = None
 
     def add_player(self, game, player_name):
         player_id = game.game_id + str(len(game.players))
@@ -37,7 +41,7 @@ class GameMaster:
 
     def start_new_game(self):
         game_id = 'test'
-        new_game = Game('test')
+        new_game = Game(game_id)
 
         p1 = self.add_player(new_game, 'player')
         new_game.players.append(p1)
@@ -46,6 +50,8 @@ class GameMaster:
         p1.camera.center_view(p1.avatar)
         new_game.map_log.append(dungeon_map)
         new_game.current_map = dungeon_map
+        self.current_game = new_game
+        log.game_messages = []
 
         for player in new_game.players:
             dungeon_map.objects.append(player.avatar)
@@ -81,16 +87,65 @@ class GameMaster:
                         resize=32x32""")
         terminal.set("""U+E360: assets/spellbooks.png, size=16x16, align=center,
                         resize=32x32""")
-        terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16, align=center,
-                        resize=32x32""")
+        terminal.set("""U+E370: assets/lightning_bolt.png, size=16x16,
+                     align=center, resize=32x32""")
         terminal.set("""U+E380: assets/fireball.png, size=16x16, align=center,
                         resize=32x32""")
         terminal.set("""U+E500: assets/white.png, size=16x16, align=center,
                         resize=32x32""")
         terminal.set("""window: size=181x52, cellsize=auto, title='roguelike',
                      font: assets/Px437_IBM_VGA8.ttf""")
+        terminal.set("""huge font: assets/Px437_IBM_VGA8.ttf, size=16x32,
+                     spacing=2x2""")
         terminal.set("input.filter={keyboard, mouse+}")
         terminal.composition(True)
+
+    def main_menu(self):
+        self.game_state = 'main_menu'
+        if self.current_game is None:
+            options = [(75, 23, "(S)tart New Game"),
+                       (75, 25, "(L)oad a Saved Game"),
+                       (75, 27, "E(x)it Game")]
+        else:
+            options = [(75, 23, "(S)tart New Game"),
+                       (75, 25, "(L)oad a Saved Game"),
+                       (75, 27, "(R)esume Current Game"),
+                       (75, 29, "E(x)it Game")]
+        terminal.clear()
+        gui.display_menu(options)
+        while True:
+            key = terminal.read()
+            if key in (terminal.TK_CLOSE, terminal.TK_ESCAPE):
+                sys.exit()
+            elif key == terminal.TK_S:
+                new_game = self.start_new_game()
+                self.game_state = 'playing'
+                new_game.play(game_master=self)
+            elif key == terminal.TK_L:
+                try:
+                    self.load_game()
+                except:
+                    print('Load error.')
+                    continue
+                self.current_game.play(self)
+            elif key == terminal.TK_X:
+                sys.exit()
+            elif key == terminal.TK_R and self.current_game is not None:
+                self.game_state = 'playing'
+                self.current_game.play(self)
+
+    def save_game(self):
+        with shelve.open('savegame', 'n') as savefile:
+            savefile['game'] = self.current_game
+            savefile['msg'] = log.game_messages
+            savefile['game_state'] = self.game_state
+            savefile.close()
+
+    def load_game(self):
+        with shelve.open('savegame', 'r') as savefile:
+            self.current_game = savefile['game']
+            log.game_messages = savefile['msg']
+            self.game_state = savefile['game_state']
 
 
 class Game:
@@ -103,7 +158,7 @@ class Game:
         self.state = 'playing'
 
     def play(self, game_master):
-        while not game_master.game_state == 'quit':
+        while game_master.game_state == 'playing':
             # Check game state
             for player in self.players:
                 if not player.avatar.alive:
@@ -129,9 +184,15 @@ class Game:
 
             player.action = current_player.input(self)
             if player.action == 'quit':
-                game_master.game_state = 'quit'
+                game_master.save_game()
+                game_master.main_menu()
 
             terminal.delay(1000 // game_master.fps)
+
+    def message(self, new_msg, color=colors.white):
+        if len(self.message_log) == 6:
+            del self.message_log[0]
+        self.message_log.append((new_msg, color))
 
 
 class Player:
@@ -329,9 +390,10 @@ def render(player, gm):
             if p.attack is not None and p.fighter.power_meter < 20:
                 if p.inventory.weapon.active:
                     for tgt_x, tgt_y in p.inventory.weapon.attack_tiles:
+                        att_key = p.get_direction(tgt_x, tgt_y)
                         weapon_x, weapon_y = player.camera.to_camera_coordinates(tgt_x, tgt_y)
                         terminal.put(weapon_x*4, weapon_y*2,
-                                     p.inventory.weapon.attack_icon)
+                                     p.inventory.weapon.attack_icons[att_key])
         else:
             if p.attack is not None:
                 pass
@@ -536,5 +598,8 @@ def current_layer():
 # Initialize Game
 the_gm = GameMaster('playing')
 the_gm.initialize_terminal()
+the_gm.main_menu()
+'''
 new_game = the_gm.start_new_game()
 new_game.play(game_master=the_gm)
+'''

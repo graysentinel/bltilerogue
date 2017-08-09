@@ -540,7 +540,9 @@ class Weapon:
         self.active = False
         self.attack_tiles = []
         self.default_attack_icon = 0xE275
-        self.attack_icon = 0xE275
+        self.attack_icons = {'w' : 0xE275, 'e' : 0xE275, 'n' : 0xE276,
+                             's' : 0xE276, 'nw' : 0xE277, 'se' : 0xE277,
+                             'sw' : 0xE278, 'ne' : 0xE278}
 
     def attack(self, source_x, source_y, direction_key):
         if self.attack_function is None:

@@ -43,6 +43,25 @@ def separator_box(x, y, w, h, color, title=None):
         terminal.puts(x, y+1, title, w, h, terminal.TK_ALIGN_TOP |
                       terminal.TK_ALIGN_CENTER)
 
+
+def menu_box(x, y, w, h, color):
+    terminal_set_color(255, color)
+
+    terminal.put(x, y, 0x2554)
+    terminal.put(x+w-1, y, 0x2557)
+
+    terminal.put(x, y+h, 0x255A)
+    terminal.put(x+w-1, y+h, 0x255D)
+
+    for x1 in range(x+1, x+w-1):
+        terminal.put(x1, y, 0x2550)
+        terminal.put(x1, y+h, 0x2550)
+
+    for y1 in range(y+1, y+h):
+        terminal.put(x, y1, 0x2551)
+        terminal.put(x+w-1, y1, 0x2551)
+
+
 def render_box(x, y, inv, key):
     # top line
     terminal.put(x, y, 0x250f)
@@ -118,3 +137,9 @@ def light_effect(x, y, light_alpha, light_color):
     terminal_set_color(light_alpha, light_color)
     terminal.put(x*4, y*2, 0xE050)
     terminal_reset_color()
+
+def display_menu(options):
+    terminal_set_color(255, colors.white)
+    for o in options:
+        terminal.puts(o[0], o[1], "[font=huge]"+ o[2] + "[/font]")
+    terminal.refresh()
